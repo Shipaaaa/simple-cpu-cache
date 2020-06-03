@@ -81,13 +81,14 @@ always @* begin
 
         RRAM_STATE: begin
             ram_wr <= 0;
-            ram_avalid <= 0;
+            ram_avalid <= 1;
         end
 
         UPDATE_STATE: begin
             select_data <= 1;
             wr_tag <= 1;
             wr <= 1;
+            ram_avalid <= 0;
         end
 
         ACK_STATE: begin
@@ -116,7 +117,7 @@ always @(posedge clk or negedge not_reset) begin
                 end
                 else if(sys_rd ^ sys_wr) begin
                     if(fifo) begin
-                        state <= FIFO_STATE;
+                        state <= RCACHE_STATE;
                     end
                     else begin
                         state <= RRAM_STATE;
@@ -125,12 +126,15 @@ always @(posedge clk or negedge not_reset) begin
             end
 
             RCACHE_STATE: begin
-                if(sys_rd) begin
-                    state <= ACK_STATE;
-                end
-                else if(sys_wr) begin
-                    state <= WCACHE_STATE;
-                end
+                if(fifo) begin
+                    state <= FIFO_STATE;
+                end else
+                    if(sys_rd) begin
+                        state <= ACK_STATE;
+                    end
+                    else if(sys_wr) begin
+                        state <= WCACHE_STATE;
+                    end
             end
 
             WCACHE_STATE: begin
@@ -156,7 +160,9 @@ always @(posedge clk or negedge not_reset) begin
             end
 
             ACK_STATE: begin
-                state <= IDLE_STATE;
+                if(sys_rd == 0 && sys_wr == 0) begin
+                    state <= IDLE_STATE;
+                end
             end
         endcase
     end
@@ -164,4 +170,3 @@ end
 
 
 endmodule
-
