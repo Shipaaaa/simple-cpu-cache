@@ -21,26 +21,27 @@
 module memory_of_data
        #(
            parameter CHANNELS = 4,
-           parameter AINDEX_WIDTH = 3,
+           parameter AINDEX_WIDTH = 8,
            parameter CH_NUM_WIDTH = 2,
            parameter BANKS = 256,
-           parameter CASH_MEM_WIDTH = 128
+           parameter CASH_STR_WIDTH = 64
        )
        (
            input                            clk,
-           input                            nReset,
-           input       [AINDEX_WIDTH-1:0]   index,
-           input       [CH_NUM_WIDTH-1:0]   chan,
-           input               				wr,
-           input       [CASH_MEM_WIDTH-1:0] data_in,
+           input                            not_reset,
+           input      [AINDEX_WIDTH-1:0]    index,
+           input      [CH_NUM_WIDTH-1:0]    chan,
+           input                            wr,
+           input      [CASH_STR_WIDTH-1:0]  data_in,
 
-           output reg  [CASH_MEM_WIDTH-1:0] data_out
+           output reg [CASH_STR_WIDTH-1:0]  data_out
        );
 
-reg [CASH_MEM_WIDTH-1:0] data_mem [BANKS-1:0] [CHANNELS-1:0];
-wire [CASH_MEM_WIDTH-1:0] data_mem_idx [CHANNELS-1:0];
+reg     [CASH_STR_WIDTH-1:0] data_mem     [BANKS-1:0] [CHANNELS-1:0];
+wire    [CASH_STR_WIDTH-1:0] data_mem_idx [CHANNELS-1:0];
 
 genvar g, h;
+
 integer i, j;
 
 for(g = 0; g < CHANNELS; g = g + 1) begin : gen_bank_wires
@@ -54,8 +55,9 @@ always @* begin
         end
     end
 end
-always @(posedge clk or negedge nReset) begin
-    if(!nReset) begin
+
+always @(posedge clk or negedge not_reset) begin
+    if(!not_reset) begin
         for(i = 0; i < BANKS; i = i + 1) begin
             for(j = 0; j < CHANNELS; j = j + 1) begin
                 data_mem[i][j] <= 0;
@@ -66,7 +68,7 @@ always @(posedge clk or negedge nReset) begin
         if(wr == 1) begin
             data_mem[index][chan] <= data_in;
             `ifndef SYNTHESIS
-                    $display("[DATA MEM %0t] write %0h (idx=%0h, chan=%0h)", $time, data_in, index, chan);
+                    $display("[DATA MEM %0t] write %0h (index=%0h, chan=%0h)", $time, data_in, index, chan);
                 `endif
         end
     end
