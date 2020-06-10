@@ -1,4 +1,9 @@
 `timescale 1ns / 1ps
+
+`include "utils_async_fifo.v"
+`include "interface_ram_controller.v"
+`include "utils_shift_reg.v"
+
 //////////////////////////////////////////////////////////////////////////////////
 // Company:
 // Engineer:
@@ -9,7 +14,7 @@
 // Project Name:
 // Target Devices:
 // Tool versions:
-// Description:
+// Description: Модуль взаимодействия с оперативной памятью
 //
 // Dependencies:
 //
@@ -18,201 +23,148 @@
 // Additional Comments:
 //
 //////////////////////////////////////////////////////////////////////////////////
-module interface_ram
+/*
+    clk - clock
+    not_reset - async reset
+    tag - тэг
+    idx - индекс
+    ram_rnw - read(1), write(0)
+    ram_rdata - данные, пришедшие с ОП (выставляется ОП)
+    ram_rack - сигнал подтверждения (выставляется ОП)
+    wdata - данные на запись из кэша
+    ram_wdata - данные, которые побайтово уходят в ОП
+    ram_addr - адрес ячейки памяти в ОП
+    ram_avalid - сигнал, разрешающий взаимодействие с ОП
+*/
+module ram_iface
        #(
-           parameter CASH_MEM_WIDTH = 128,
-           parameter WORD_SIZE = 32,
-           parameter ADDR_SIZE = 14
+           parameter ADDR_SIZE = 13,
+           parameter CASH_STR_WIDTH = 64,
+           parameter WORD_SIZE = 16
        )
        (
-           input c_clk,
-           input ram_clk,
-           input c_nReset,
+           // Clock domain 1: RAM
+           input  [WORD_SIZE-1:0]      ram_rdata,
+           input                       ram_ack,
+           input                       ram_rst_n,
+           input                       ram_clk,
 
-           input c_aval,
-           input c_wr,
-           input ram_ack,
-           input [CASH_MEM_WIDTH - 1:0] c_data_in,
-           input [WORD_SIZE - 1:0]  ram_data_in,
-           input [ADDR_SIZE - 1:0]  c_addr,
+           output [WORD_SIZE-1:0]      ram_wdata,
+           output [ADDR_SIZE-1:0]      ram_addr,
+           output                      ram_avalid,
+           output                      ram_rnw,
 
-           output ram_aval,
-           output ram_wr,
-           output reg c_ack,
-           output [CASH_MEM_WIDTH - 1:0] c_data_out,
-           output [WORD_SIZE - 1:0]  ram_data_out,
-           output [ADDR_SIZE - 1:0]  ram_addr
+           // Clock domain 2: Cache
+           input  [CASH_STR_WIDTH-1:0] cache_wdata,
+           input  [ADDR_SIZE-1:0]      cache_addr,
+           input                       cache_avalid,
+           input                       cache_rnw,
+           input                       cache_rst_n,
+           input                       cache_clk,
+
+           output [CASH_STR_WIDTH-1:0] cache_rdata,
+           output                      cache_ack
        );
 
-// reg [11:0]  input_addr_reg;
-reg [CASH_MEM_WIDTH - 1:0] io_shift_reg;
-wire [WORD_SIZE - 1:0] to_rd_fifo;
-wire [WORD_SIZE + ADDR_SIZE + 1:0] to_wr_fifo;
-wire [WORD_SIZE - 1:0] from_rd_fifo;
-wire [WORD_SIZE + ADDR_SIZE + 1:0] from_wr_fifo;
+wire [CASH_STR_WIDTH-1:0]   sr_dout;
+wire [WORD_SIZE-1:0]        ram_word = sr_dout[WORD_SIZE-1:0];
+wire [ADDR_SIZE-1:0]        ram_addr_c;
+wire                        ram_rnw_c;
+wire                        ram_avalid_c;
 
-reg mode_wr;
-reg write_rd_fifo;
-reg write_wr_fifo;
+assign cache_rdata = sr_dout;
 
-wire read_rd_fifo;
-wire read_wr_fifo;
-wire rd_empty;
-wire wr_empty;
+wire [(WORD_SIZE+ADDR_SIZE+2)-1:0] ram_packet_i;
 
-assign read_rd_fifo = 1;
-assign read_wr_fifo = 1;
+assign ram_packet_i = { ram_rnw_c, ram_avalid_c, ram_addr_c, ram_word };
 
-wire n_rst;
+wire fw_full;
+wire fw_empty;
+wire fw_read = ~fw_empty;
+wire fw_write;
 
-async_fifo #(32, 4, 16) RamReadFIFO (
-               .nRST(c_nReset),          // input rst
-               .WR_CLK(ram_clk),         // input wr_clk
-               .RD_CLK(c_clk),           // input rd_clk
-               .DIN(to_rd_fifo),         // input [15 : 0] din
-               .write(write_rd_fifo),    // input wr_en
-               .read(read_rd_fifo),      // input rd_en
-               .DOUT(from_rd_fifo),      // output [15 : 0] dout
-               .EMPTY(rd_empty)          // output empty
-           );
+wire fr_full;
+wire fr_empty;
+wire fr_read;
+wire fr_write;
+wire [WORD_SIZE-1:0] fr_word;
 
-async_fifo #(48, 4, 16) RamWriteFIFO (
-               .nRST(c_nReset),          // input rst
-               .WR_CLK(c_clk),           // input wr_clk
-               .RD_CLK(ram_clk),         // input rd_clk
-               .DIN(to_wr_fifo),         // input [29 : 0] din
-               .write(write_wr_fifo),    // input wr_en
-               .read(read_wr_fifo),      // input rd_en
-               .DOUT(from_wr_fifo),      // output [29 : 0] dout
-               .EMPTY(wr_empty)          // output empty
-           );
+wire sr_load;
+wire sr_mode;
+wire sr_shift;
 
-parameter S_IDLE = 0;
-parameter S_WAIT_ACK = 1;
-parameter S_READ = 2;
-parameter S_WRITE = 3;
+reg fw_empty_g;
+wire [(WORD_SIZE+ADDR_SIZE+2)-1:0] ram_packet_o;
+assign ram_rnw      = ram_packet_o[WORD_SIZE+ADDR_SIZE+1];           //= ram_packet_o[45];
+assign ram_avalid   = ram_packet_o[WORD_SIZE+ADDR_SIZE];             //= ram_packet_o[44];
+assign ram_addr     = ram_packet_o[WORD_SIZE+ADDR_SIZE-1:WORD_SIZE]; //= ram_packet_o[43:32];
+assign ram_wdata    = ram_packet_o[WORD_SIZE-1:0];                   //= ram_packet_o[31:0];
 
-reg [2:0] state;
-reg [2:0] rw_ctr;
-reg wr_empty_buff;
-reg rd_empty_buff;
-reg c_aval_state;
-
-reg c_aval_buf;
-
-
-assign to_wr_fifo[47]      = c_aval_buf;
-assign to_wr_fifo[46]      = state == S_IDLE ?  c_wr : (state == S_WRITE ? 1 : 0);
-assign to_wr_fifo[45:32]   = c_addr;
-assign to_wr_fifo[31:0]    = io_shift_reg[31:0];
-assign c_data_out          = io_shift_reg;
-
-
-always @* begin
-
-
-    case(state)
-        S_IDLE: begin
-            write_wr_fifo <= 0;
-            if (c_aval) begin
-                c_ack <= 0;
-            end
-        end
-
-        S_READ: begin
-            if (!rd_empty_buff) begin
-                if (rw_ctr == 3) begin
-                    c_ack <= 1;
-                end
-            end
-        end
-
-        S_WRITE: begin
-            write_wr_fifo <= 1;
-            if (rw_ctr == 3) begin
-                c_ack <= 1;
-            end
-        end
-    endcase
-end
-
-always @(posedge c_clk) begin
-    //write_wr_fifo <= (state == S_WRITE);// || (state == S_IDLE && c_aval);
-    rd_empty_buff <= rd_empty;
-
-    if (!c_nReset) begin
-        state         <= S_IDLE;
-        rw_ctr        <= 0;
-        io_shift_reg  <= 1;
-        //wr_empty_buff <= 1;
-        rd_empty_buff <= 1;
-        c_aval_buf    <= 0;
-    end
-
-
-    case(state)
-        S_IDLE: begin
-
-            if (c_aval) begin
-                //$display("got aval: wr=%b", c_wr);
-                state <= c_wr ? S_WRITE : S_READ;
-                if (c_wr) io_shift_reg <= c_data_in;
-                rw_ctr <= 0;
-                mode_wr <= c_wr;
-                c_aval_buf <= 1;
-            end else
-                c_aval_buf <= 0;
-
-        end
-        S_WAIT_ACK: begin
-            c_aval_buf <= 0;
-            //$display("waiting ack: wr=%b empty=%b", mode_wr, rd_empty);
-            if (!rd_empty_buff) begin
-                if (mode_wr) begin
-                    state <= S_IDLE;
-                end else
-                    state <= S_READ;
-            end
-        end
-        S_READ: begin
-            c_aval_buf <= 0;
-            if (!rd_empty_buff) begin
-                //$display("reading: got data %x", from_rd_fifo[31:0]);
-                io_shift_reg <= {from_rd_fifo[31:0], io_shift_reg[127:32]};
-                if (rw_ctr == 3) begin
-                    state <= S_IDLE;
-                end else
-                    rw_ctr <= rw_ctr + 1;
-            end
-
-        end
-        S_WRITE: begin
-            c_aval_buf <= 0;
-            io_shift_reg <= io_shift_reg >> 32;
-            if (rw_ctr == 3) begin
-                state <= S_IDLE;
-            end else
-                rw_ctr <= rw_ctr + 1;
-        end
-    endcase
-end
-
-wire recv_ram_wr;
-wire recv_ram_aval;
-
-assign recv_ram_aval = from_wr_fifo[47];
-assign recv_ram_wr   = from_wr_fifo[46];
-assign ram_addr      = from_wr_fifo[45:32];
-assign ram_data_out  = from_wr_fifo[31:0];
-
-assign ram_aval      = wr_empty_buff ? 0 : recv_ram_aval;
-assign ram_wr        = recv_ram_wr;
-
-
-assign to_rd_fifo[WORD_SIZE - 1:0]  = ram_data_in;
-
+reg [WORD_SIZE-1:0] ram_rdata_d;
 always @(posedge ram_clk) begin
-    wr_empty_buff <= wr_empty;
-    write_rd_fifo <= ram_ack && state == S_READ;
+    ram_rdata_d <= ram_rdata;
 end
+
+async_fifo #(17, 3)
+           read_fifo (
+               .not_reset(ram_rst_n),
+               .rd_clk(cache_clk),
+               .wr_clk(ram_clk),
+               .din(ram_rdata_d),
+               .read(fr_read),
+               .write(ram_ack),
+
+               .dout(fr_word),
+               .empty(fr_empty),
+               .full(fr_full)
+           );
+
+shift_reg #(CASH_STR_WIDTH, WORD_SIZE)
+          shift_register(
+              .clk(cache_clk),
+              .not_reset(cache_rst_n),
+              .din(cache_wdata),
+              .din_b(fr_word),
+              .load(sr_load),
+              .shift(sr_shift),
+              .mode(sr_mode),
+              .dout(sr_dout)
+          );
+
+async_fifo #(31, 3)
+           write_fifo(
+               .not_reset(cache_rst_n),
+               .rd_clk(ram_clk),
+               .wr_clk(cache_clk),
+               .din(ram_packet_i),
+               .read(fw_read),
+               .write(fw_write),
+
+               .dout(ram_packet_o),
+               .empty(fw_empty),
+               .full(fw_full)
+           );
+
+ram_iface_controller #(13, 64)
+                     controller(
+                         .clk(cache_clk),
+                         .not_reset(cache_rst_n),
+                         .cache_avalid(cache_avalid),
+                         .cache_rnw(cache_rnw),
+                         .fifo_empty(fr_full),
+                         .rfifo_empty(fr_empty),
+                         .fifo_full(fw_full),
+                         .cache_wdata(cache_wdata),
+                         .cache_addr(cache_addr),
+
+                         .write(fw_write),
+                         .read(fr_read),
+                         .cache_ack(cache_ack),
+                         .ram_addr(ram_addr_c),
+                         .ram_rnw(ram_rnw_c),
+                         .ram_avalid(ram_avalid_c),
+                         .sr_load(sr_load),
+                         .sr_mode(sr_mode),
+                         .sr_shift(sr_shift)
+                     );
 endmodule

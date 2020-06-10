@@ -1,4 +1,7 @@
 `timescale 1ns / 1ps
+
+`include "utils_async_fifo_bin.v"
+
 //////////////////////////////////////////////////////////////////////////////////
 // Company:
 // Engineer:
@@ -18,106 +21,133 @@
 // Additional Comments:
 //
 //////////////////////////////////////////////////////////////////////////////////
-module interface_cpu(
-           input  [15:0] addr,
-           input  [31:0] sys_wdata,
-           input  [3:0]  sys_bval,
-           input         sys_rd,
-           input         sys_wr,
+module interface_cpu
+       #(
+           parameter ADDR_SIZE = 16,
+           parameter DATA_SIZE = 32,
+           parameter BVAL_SIZE = 4
+       )
+       (
+           input  [ADDR_SIZE-1:0]  addr,
+           input  [DATA_SIZE-1:0]  sys_wdata,
+           input  [BVAL_SIZE-1:0]  sys_bval,
+           input                   sys_rd,
+           input                   sys_wr,
 
-           output [31:0] sys_rdata,
-           output        sys_ack,
+           output [DATA_SIZE-1:0]  sys_rdata,
+           output                  sys_ack,
 
-           output [15:0] c_addr,
-           output [31:0] c_wdata,
-           output [3:0]  c_bval,
-           output        c_rd,
-           output        c_wr,
+           output [ADDR_SIZE-1:0]  c_addr,
+           output [DATA_SIZE-1:0]  c_wdata,
+           output [BVAL_SIZE-1:0]  c_bval,
+           output                  c_rd,
+           output                  c_wr,
 
-           input  [31:0] c_rdata,
-           input         c_ack,
+           input  [DATA_SIZE-1:0]  c_rdata,
+           input                   c_ack,
 
-           input         nReset,
-           input         c_clk,
-           input         sys_clk
+           input                   rst,
+           input                   c_clk,
+           input                   sys_clk
        );
 
-wire [53:0] wr_fifo_din;
-wire [53:0] wr_fifo_dout;
-wire [32:0] rd_fifo_din;
-wire [32:0] rd_fifo_dout;
+parameter BUS_SIZE = ADDR_SIZE + DATA_SIZE + BVAL_SIZE + 2;
 
-assign wr_fifo_din[53]    = sys_rd;
-assign wr_fifo_din[52]    = sys_wr;
-assign wr_fifo_din[51:48] = sys_bval;
-assign wr_fifo_din[47:32] = addr;
-assign wr_fifo_din[31:0]  = sys_wdata;
+wire not_reset;
 
-assign sys_ack   = rd_fifo_dout[32];
-assign sys_rdata = rd_fifo_dout[31:0];
+assign not_reset = ~rst;
 
-assign c_rd    = wr_fifo_dout[53];
-assign c_wr    = wr_fifo_dout[52];
-assign c_bval  = wr_fifo_dout[51:48];
-assign c_addr  = wr_fifo_dout[47:32];
-assign c_wdata = wr_fifo_dout[31:0];
+wire [BUS_SIZE-1:0] wr_fifo_din;
+wire [BUS_SIZE-1:0] wr_fifo_dout;
+wire [DATA_SIZE:0]  rd_fifo_din;
+wire [DATA_SIZE:0]  rd_fifo_dout;
 
-assign rd_fifo_din[32]   = c_ack;
-assign rd_fifo_din[31:0] = c_rdata;
+assign wr_fifo_din[BUS_SIZE-1]                      = sys_rd;
+assign wr_fifo_din[BUS_SIZE-2]                      = sys_wr;
+assign wr_fifo_din[BUS_SIZE-3:DATA_SIZE+ADDR_SIZE]  = sys_bval;
+assign wr_fifo_din[DATA_SIZE+ADDR_SIZE-1:DATA_SIZE] = addr;
+assign wr_fifo_din[DATA_SIZE-1:0]                   = sys_wdata;
+
+assign sys_ack   = rd_fifo_dout[DATA_SIZE];
+assign sys_rdata = rd_fifo_dout[DATA_SIZE-1:0];
+
+assign c_rd    = wr_fifo_dout[BUS_SIZE-1];
+assign c_wr    = wr_fifo_dout[BUS_SIZE-2];
+assign c_bval  = wr_fifo_dout[BUS_SIZE-3:DATA_SIZE+ADDR_SIZE];
+assign c_addr  = wr_fifo_dout[DATA_SIZE+ADDR_SIZE-1:DATA_SIZE];
+assign c_wdata = wr_fifo_dout[DATA_SIZE-1:0];
+
+assign rd_fifo_din[DATA_SIZE]   = c_ack;
+assign rd_fifo_din[DATA_SIZE-1:0] = c_rdata;
 
 reg c_ack_buf;
 reg sys_rd_buf;
 reg sys_wr_buf;
+reg read_rd_fifo;
+reg read_wr_fifo;
 
 wire write_rd_fifo;
 wire write_wr_fifo;
+wire rd_fifo_full;
+wire wr_fifo_full;
+wire rd_fifo_empty;
+wire wr_fifo_empty;
 
 assign write_rd_fifo = c_ack_buf != c_ack;
 assign write_wr_fifo = (sys_rd != sys_rd_buf) || (sys_wr != sys_wr_buf);
 
-always @(posedge c_clk) begin
-
-    if (!nReset) begin
+always @* if (rst) begin
+        $display("RST");
+        sys_wr_buf <= 0;
+        sys_rd_buf <= 0;
         c_ack_buf  <= 0;
+
+        read_rd_fifo <= 0;
+        read_wr_fifo <= 0;
     end
+
+always @(posedge c_clk) begin
+    if (wr_fifo_full)  read_wr_fifo <= 1; else
+        if (wr_fifo_empty) read_wr_fifo <= 0;
 
     c_ack_buf <= c_ack;
     if (c_ack) begin
-        //$display("[%3d] ack %b data %08x", $time, c_ack, c_rdata);
+        $display("[%3d] ack %b data %08x", $time, c_ack, c_rdata);
     end
 end
 
 always @(posedge sys_clk) begin
-    if (!nReset) begin
-        //$display("RST");
-        sys_rd_buf <= 0;
-        sys_wr_buf <= 0;
-    end
+    if (rd_fifo_full)  read_rd_fifo <= 1; else
+        if (rd_fifo_empty) read_rd_fifo <= 0;
 
-    //if (sys_wr != sys_wr_buf) $display("flipping wr -> %b", sys_wr);
-    //if (sys_rd != sys_rd_buf) $display("flipping rd -> %b", sys_rd);
+    if (sys_wr != sys_wr_buf) $display("flipping wr -> %b", sys_wr);
+    if (sys_rd != sys_rd_buf) $display("flipping rd -> %b", sys_rd);
     sys_rd_buf <= sys_rd;
     sys_wr_buf <= sys_wr;
 end
 
-async_fifo #(33, 2, 4) ReadFIFO (
-               .nRST(nReset),            // input rst
-               .WR_CLK(c_clk),           // input wr_clk
-               .RD_CLK(sys_clk),         // input rd_clk
-               .DIN(rd_fifo_din),        // input [32 : 0] din
-               .write(write_rd_fifo),    // input wr_en
-               .read(1'b1),              // input rd_en
-               .DOUT(rd_fifo_dout)       // output [32 : 0] dout
-           );
+async_bin_fifo #(DATA_SIZE+1) ReadFIFO (
+                   .not_reset(not_reset),    // input rst
+                   .wr_clk(c_clk),           // input wr_clk
+                   .rd_clk(sys_clk),         // input rd_clk
+                   .din(rd_fifo_din),        // input din
+                   .write(write_rd_fifo),    // input wr_en
+                   .read(read_rd_fifo),      // input rd_en
+                   .dout(rd_fifo_dout),      // output dout
+                   .full(rd_fifo_full),      // output full
+                   .empty(rd_fifo_empty)     // output empty
+               );
 
-async_fifo #(54, 2, 4) WriteFIFO (
-               .nRST(nReset),            // input rst
-               .WR_CLK(sys_clk),         // input wr_clk
-               .RD_CLK(c_clk),           // input rd_clk
-               .DIN(wr_fifo_din),        // input [53 : 0] din
-               .write(write_wr_fifo),    // input wr_en
-               .read(1'b1),              // input rd_en
-               .DOUT(wr_fifo_dout)       // output [53 : 0] dout
-           );
+async_bin_fifo #(BUS_SIZE) WriteFIFO (
+                   .not_reset(not_reset),    // input rst
+                   .wr_clk(sys_clk),         // input wr_clk
+                   .rd_clk(c_clk),           // input rd_clk
+                   .din(wr_fifo_din),        // input din
+                   .write(write_wr_fifo),    // input wr_en
+                   .read(read_wr_fifo),      // input rd_en
+                   .dout(wr_fifo_dout),      // output dout
+                   .full(wr_fifo_full),      // output full
+                   .empty(wr_fifo_empty)     // output empty
+               );
 
 endmodule
