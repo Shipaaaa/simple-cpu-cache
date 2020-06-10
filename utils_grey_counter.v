@@ -1,25 +1,28 @@
+`timescale 1ns / 1ps
+
 module gray_counter
        #(
            parameter WIDTH = 3
        )
        (
-           input CLK,
-           input nRST,
-           input EN,
+           input clk,
+           input not_reset,
+           input en,
 
            output reg [WIDTH-1:0] value
        );
 
-reg [WIDTH-1:0] cnt;
+reg [WIDTH-1:0] counter;
 
-always @(posedge CLK or negedge nRST) begin
-    if(~nRST) begin
-        cnt <= 1;
+always @(posedge clk or negedge not_reset) begin
+    if(~not_reset) begin
+        counter <= 1;
         value <= 0;
     end
-    else if(EN) begin
-        cnt <= cnt + 1;
-        value <= {cnt[WIDTH-1], cnt[WIDTH-2:0] ^ cnt[WIDTH-1:1]};
+    else if(en) begin
+        counter <= counter + 1;
+        value <= {counter[WIDTH-1], counter[WIDTH-2:0] ^ counter[WIDTH-1:1]};
     end
 end
+
 endmodule

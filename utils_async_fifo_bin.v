@@ -2,17 +2,15 @@
 
 `include "utils_grey_counter.v"
 
-module async_fifo
+module async_bin_fifo
        #(
-           parameter CASH_STR_WIDTH = 64,
-           parameter ADDR_WIDTH = 3,
-           parameter FIFO_DEPTH = (1 << ADDR_WIDTH)
+           parameter CASH_STR_WIDTH = 64
        )
        (
            input                           not_reset,
            input                           rd_clk,
            input                           wr_clk,
-           input      [CASH_STR_WIDTH-1:0] din,
+           input [CASH_STR_WIDTH-1:0]      din,
            input                           read,
            input                           write,
 
@@ -21,18 +19,35 @@ module async_fifo
            output reg                      full
        );
 
-reg  [CASH_STR_WIDTH-1:0]   FIFO [FIFO_DEPTH-1:0];
+parameter ADDR_WIDTH = 1;
+parameter FIFO_DEPTH = 2;
 
-wire [ADDR_WIDTH-1:0]       p_read;
-wire [ADDR_WIDTH-1:0]       p_write;
-wire                        eq_addr;
-wire                        write_en;
-wire                        read_en;
-wire                        setStatus;
-wire                        rstStatus;
-reg                         status;
-wire                        preFull;
-wire                        preEmpty;
+reg [CASH_STR_WIDTH-1:0] FIFO [FIFO_DEPTH-1:0];
+
+reg     [ADDR_WIDTH-1:0] p_read;
+reg     [ADDR_WIDTH-1:0] p_write;
+wire                     eq_addr;
+wire                     write_en;
+wire                     read_en;
+wire                     setStatus;
+wire                     rstStatus;
+reg                      status;
+wire                     preFull;
+wire                     preEmpty;
+
+always @(posedge rd_clk or not_reset) begin
+    if (!not_reset)
+        p_read <= 0;
+    else if (read_en)
+        p_read <= p_read + 1;
+end
+
+always @(posedge wr_clk or not_reset) begin
+    if (!not_reset)
+        p_write <= 0;
+    else if (write_en)
+        p_write <= p_write + 1;
+end
 
 assign eq_addr = (p_read == p_write);
 assign write_en = (write & ~full);
@@ -59,15 +74,8 @@ always @(posedge wr_clk or posedge preFull) begin
     end
 end
 
-assign setStatus = (
-           (p_write[ADDR_WIDTH-2] ~^ p_read[ADDR_WIDTH-1]) &
-           (p_write[ADDR_WIDTH-1] ^ p_read[ADDR_WIDTH-2])
-       );
-
-assign rstStatus = (
-           (p_write[ADDR_WIDTH-2] ^ p_read[ADDR_WIDTH-1])  &
-           (p_write[ADDR_WIDTH-1] ~^ p_read[ADDR_WIDTH-2])
-       );
+assign setStatus = write_en & (p_write ^ p_read);
+assign rstStatus = read_en & (p_write ^ p_read);
 
 always @(setStatus or rstStatus or not_reset) begin
     if(rstStatus | ~not_reset) begin
@@ -78,27 +86,12 @@ always @(setStatus or rstStatus or not_reset) begin
     end
 end
 
-gray_counter #(ADDR_WIDTH)
-             gc_rd(
-                 .clk(rd_clk),
-                 .en(read_en),
-                 .not_reset(not_reset),
-                 .value(p_read)
-             );
-
-gray_counter #(ADDR_WIDTH)
-             gc_wr(
-                 .clk(wr_clk),
-                 .en(write_en),
-                 .not_reset(not_reset),
-                 .value(p_write)
-             );
-
 always @(posedge rd_clk or negedge not_reset) begin
     if(~not_reset) begin
         dout <= 0;
     end
     else if(read_en) begin
+        $display("[%3d] read  %07h to pos %0h", $time, FIFO[p_read], p_read);
         dout <= FIFO[p_read];
     end
 end
@@ -113,7 +106,7 @@ always @(posedge wr_clk or negedge not_reset) begin
     end
     else if(write_en) begin
         FIFO[p_write] <= din;
-        $display("[%0t] write %0h to pos %0h", $time, din, p_write);
+        $display("[%3d] write %07h to pos %0h", $time, din, p_write);
     end
 end
 
