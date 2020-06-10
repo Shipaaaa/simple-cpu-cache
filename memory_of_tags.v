@@ -22,26 +22,26 @@ module bank_of_tags
        #(
            parameter TAG_SIZE = 5,
            parameter CHANNELS_COUNT = 4,
-           parameter CHANNEL_SIZE = 2
+           parameter CH_NUM_WIDTH = 2
        )
        (
-           input clk,
-           input not_reset,
-           input [TAG_SIZE - 1:0] tag,
-           input rewrite_tag,
+           input                         clk,
+           input                         not_reset,
+           input [TAG_SIZE-1:0]          tag,
+           input                         rewrite_tag,
 
-           output is_hit,
-           output need_use_fifo,
+           output                        is_hit,
+           output                        need_use_fifo,
 
-           output reg [CHANNEL_SIZE - 1:0] channel,
-           output reg [CHANNEL_SIZE - 1:0] fifo_channel,
-           output reg [TAG_SIZE - 1:0]     fifo_tag_for_flush
+           output reg [CH_NUM_WIDTH-1:0] channel,
+           output reg [CH_NUM_WIDTH-1:0] fifo_channel,
+           output reg [TAG_SIZE-1:0]     fifo_tag_for_flush
        );
 
-reg     [TAG_SIZE - 1:0]       memories_of_tags [CHANNELS_COUNT - 1:0];
-reg     [CHANNEL_SIZE - 1:0]   current_fifo;
-reg     [CHANNELS_COUNT - 1:0] valid_tags;
-wire    [CHANNELS_COUNT - 1:0] hits;
+reg     [TAG_SIZE-1:0]       memories_of_tags [CHANNELS_COUNT-1:0];
+reg     [CH_NUM_WIDTH-1:0]   current_fifo;
+reg     [CHANNELS_COUNT-1:0] valid_tags;
+wire    [CHANNELS_COUNT-1:0] hits;
 
 integer i;
 genvar j;
@@ -98,36 +98,36 @@ module memory_of_tags
     #(
         parameter TAG_SIZE = 5,
         parameter INDEX_SIZE = 8,
-        parameter CHANNEL_SIZE = 2,
+        parameter CH_NUM_WIDTH = 2,
         parameter BANKS_COUNT = 256
     )
     (
-        input clk,
-        input not_reset,
-        input [TAG_SIZE - 1:0] tag,
-        input [INDEX_SIZE - 1:0] index,
-        input rewrite_tag,
+        input                         clk,
+        input                         not_reset,
+        input [TAG_SIZE-1:0]          tag,
+        input [INDEX_SIZE-1:0]        index,
+        input                         rewrite_tag,
 
-        output is_hit,
-        output need_use_fifo,
+        output                        is_hit,
+        output                        need_use_fifo,
 
-        output reg [CHANNEL_SIZE - 1:0] channel,
-        output reg	[CHANNEL_SIZE - 1:0] fifo_channel,
-        output reg [TAG_SIZE - 1:0] fifo_tag_for_flush
+        output reg [CH_NUM_WIDTH-1:0] channel,
+        output reg [CH_NUM_WIDTH-1:0] fifo_channel,
+        output reg [TAG_SIZE-1:0]     fifo_tag_for_flush
     );
 
 
-wire [BANKS_COUNT - 1:0] hits;
+wire [BANKS_COUNT-1:0] hits;
 
-assign is_hit  = | hits;
+assign is_hit = | hits;
 assign need_use_fifo = need_use_fifos[index];
 
-wire [BANKS_COUNT - 1:0] tags_for_write;
-wire [BANKS_COUNT - 1:0] need_use_fifos;
+wire [BANKS_COUNT-1:0]  tags_for_write;
+wire [BANKS_COUNT-1:0]  need_use_fifos;
 
-wire [CHANNEL_SIZE - 1:0] channels [BANKS_COUNT - 1:0];
-wire [CHANNEL_SIZE - 1:0] fifo_channels [BANKS_COUNT - 1:0];
-wire [TAG_SIZE - 1:0] fifo_tags_for_flush [BANKS_COUNT - 1:0];
+wire [CH_NUM_WIDTH-1:0] channels [BANKS_COUNT-1:0];
+wire [CH_NUM_WIDTH-1:0] fifo_channels [BANKS_COUNT-1:0];
+wire [TAG_SIZE-1:0]     fifo_tags_for_flush [BANKS_COUNT-1:0];
 
 genvar i;
 integer j;

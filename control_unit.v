@@ -51,7 +51,6 @@ parameter ACK_STATE         = 6;
 
 reg [3:0] state;
 
-
 always @* begin
     select_channel <= !hit;
 
@@ -99,9 +98,6 @@ always @* begin
         end
     endcase
 end
-
-
-
 
 always @(posedge clk or negedge not_reset) begin
     if(!not_reset) begin
@@ -167,6 +163,5 @@ always @(posedge clk or negedge not_reset) begin
         endcase
     end
 end
-
 
 endmodule
