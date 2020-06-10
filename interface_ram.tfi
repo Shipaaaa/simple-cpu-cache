@@ -1,0 +1,24 @@
+
+
+
+// Instantiate the module
+interface_ram instance_name (
+    .ram_rdata(ram_rdata), 
+    .ram_ack(ram_ack), 
+    .ram_rst_n(ram_rst_n), 
+    .ram_clk(ram_clk), 
+    .ram_wdata(ram_wdata), 
+    .ram_addr(ram_addr), 
+    .ram_avalid(ram_avalid), 
+    .ram_rnw(ram_rnw), 
+    .cache_wdata(cache_wdata), 
+    .cache_addr(cache_addr), 
+    .cache_avalid(cache_avalid), 
+    .cache_rnw(cache_rnw), 
+    .cache_rst_n(cache_rst_n), 
+    .cache_clk(cache_clk), 
+    .cache_rdata(cache_rdata), 
+    .cache_ack(cache_ack)
+    );
+
+

@@ -1,0 +1,13 @@
+
+
+
+// Instantiate the module
+update_data instance_name (
+    .sys_wdata(sys_wdata), 
+    .mem_data(mem_data), 
+    .offset(offset), 
+    .sys_bval(sys_bval), 
+    .out_data(out_data)
+    );
+
+

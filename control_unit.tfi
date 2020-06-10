@@ -1,0 +1,22 @@
+
+
+
+// Instantiate the module
+control_unit instance_name (
+    .clk(clk), 
+    .not_reset(not_reset), 
+    .sys_rd(sys_rd), 
+    .sys_wr(sys_wr), 
+    .hit(hit), 
+    .fifo(fifo), 
+    .ram_ack(ram_ack), 
+    .ram_avalid(ram_avalid), 
+    .ram_wr(ram_wr), 
+    .wr_tag(wr_tag), 
+    .wr(wr), 
+    .select_data(select_data), 
+    .select_channel(select_channel), 
+    .sys_ack(sys_ack)
+    );
+
+

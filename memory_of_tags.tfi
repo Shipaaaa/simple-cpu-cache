@@ -1,0 +1,18 @@
+
+
+
+// Instantiate the module
+memory_of_tags instance_name (
+    .clk(clk), 
+    .not_reset(not_reset), 
+    .tag(tag), 
+    .index(index), 
+    .rewrite_tag(rewrite_tag), 
+    .is_hit(is_hit), 
+    .need_use_fifo(need_use_fifo), 
+    .channel(channel), 
+    .fifo_channel(fifo_channel), 
+    .fifo_tag_for_flush(fifo_tag_for_flush)
+    );
+
+

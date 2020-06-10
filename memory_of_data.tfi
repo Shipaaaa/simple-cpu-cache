@@ -1,0 +1,15 @@
+
+
+
+// Instantiate the module
+memory_of_data instance_name (
+    .clk(clk), 
+    .not_reset(not_reset), 
+    .index(index), 
+    .chan(chan), 
+    .wr(wr), 
+    .data_in(data_in), 
+    .data_out(data_out)
+    );
+
+
