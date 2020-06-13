@@ -36,7 +36,7 @@
     ram_addr - адрес ячейки памяти в ОП
     ram_avalid - сигнал, разрешающий взаимодействие с ОП
 */
-module ram_iface
+module interface_ram
        #(
            parameter ADDR_SIZE = 13,
            parameter CASH_STR_WIDTH = 64,
@@ -105,7 +105,8 @@ always @(posedge ram_clk) begin
     ram_rdata_d <= ram_rdata;
 end
 
-async_fifo #(17, 3)
+// слово + ram_aks
+async_fifo #(17, 2)
            read_fifo (
                .not_reset(ram_rst_n),
                .rd_clk(cache_clk),
@@ -131,7 +132,8 @@ shift_reg #(CASH_STR_WIDTH, WORD_SIZE)
               .dout(sr_dout)
           );
 
-async_fifo #(31, 3)
+// адрес + слово + ram_rnw + ram_avalid
+async_fifo #(31, 2)
            write_fifo(
                .not_reset(cache_rst_n),
                .rd_clk(ram_clk),
@@ -145,26 +147,26 @@ async_fifo #(31, 3)
                .full(fw_full)
            );
 
-ram_iface_controller #(13, 64)
-                     controller(
-                         .clk(cache_clk),
-                         .not_reset(cache_rst_n),
-                         .cache_avalid(cache_avalid),
-                         .cache_rnw(cache_rnw),
-                         .fifo_empty(fr_full),
-                         .rfifo_empty(fr_empty),
-                         .fifo_full(fw_full),
-                         .cache_wdata(cache_wdata),
-                         .cache_addr(cache_addr),
+interface_ram_controller #(13, 64)
+                         controller(
+                             .clk(cache_clk),
+                             .not_reset(cache_rst_n),
+                             .cache_avalid(cache_avalid),
+                             .cache_rnw(cache_rnw),
+                             .fifo_empty(fr_full),
+                             .rfifo_empty(fr_empty),
+                             .fifo_full(fw_full),
+                             .cache_wdata(cache_wdata),
+                             .cache_addr(cache_addr),
 
-                         .write(fw_write),
-                         .read(fr_read),
-                         .cache_ack(cache_ack),
-                         .ram_addr(ram_addr_c),
-                         .ram_rnw(ram_rnw_c),
-                         .ram_avalid(ram_avalid_c),
-                         .sr_load(sr_load),
-                         .sr_mode(sr_mode),
-                         .sr_shift(sr_shift)
-                     );
+                             .write(fw_write),
+                             .read(fr_read),
+                             .cache_ack(cache_ack),
+                             .ram_addr(ram_addr_c),
+                             .ram_rnw(ram_rnw_c),
+                             .ram_avalid(ram_avalid_c),
+                             .sr_load(sr_load),
+                             .sr_mode(sr_mode),
+                             .sr_shift(sr_shift)
+                         );
 endmodule

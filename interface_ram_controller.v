@@ -18,7 +18,7 @@
 // Additional Comments:
 //
 //////////////////////////////////////////////////////////////////////////////////
-module ram_iface_controller
+module interface_ram_controller
        #(
            parameter ADDR_SIZE = 13,
            parameter CASH_STR_WIDTH = 64
