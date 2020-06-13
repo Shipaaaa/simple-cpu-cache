@@ -2,7 +2,7 @@
 
 module gray_counter
        #(
-           parameter WIDTH = 3
+           parameter WIDTH = 2
        )
        (
            input clk,

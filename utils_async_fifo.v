@@ -5,7 +5,7 @@
 module async_fifo
        #(
            parameter CASH_STR_WIDTH = 64,
-           parameter ADDR_WIDTH = 3,
+           parameter ADDR_WIDTH = 2,
            parameter FIFO_DEPTH = (1 << ADDR_WIDTH)
        )
        (

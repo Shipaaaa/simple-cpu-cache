@@ -12,7 +12,7 @@
 module shift_reg
        #(
            parameter CASH_STR_WIDTH = 64,
-           parameter SHIFT_LEN = 32
+           parameter SHIFT_LEN = 16
        )
        (
            input                       clk,
