@@ -104,16 +104,19 @@ module memory_of_tags
     (
         input                         clk,
         input                         not_reset,
+        
         input [TAG_SIZE-1:0]          tag,
         input [INDEX_SIZE-1:0]        index,
-        input                         rewrite_tag,
+        
+        input                         rewrite_tag,       // rewrite_tag - перезапись тэга
 
         output                        is_hit,
-        output                        need_use_fifo,
+        output                        need_use_fifo,     // Что использовать chan или fifo_chan
 
         output reg [CH_NUM_WIDTH-1:0] channel,
         output reg [CH_NUM_WIDTH-1:0] fifo_channel,
-        output reg [TAG_SIZE-1:0]     fifo_tag_for_flush
+
+        output reg [TAG_SIZE-1:0]     fifo_tag_for_flush // Старый тэг для вытиснения
     );
 
 
