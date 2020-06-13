@@ -29,9 +29,11 @@ module memory_of_data
        (
            input                            clk,
            input                            not_reset,
+
            input      [AINDEX_WIDTH-1:0]    index,
-           input      [CH_NUM_WIDTH-1:0]    chan,
-           input                            wr,
+           input      [CH_NUM_WIDTH-1:0]    channel,
+           
+           input                            need_write_data,
            input      [CASH_STR_WIDTH-1:0]  data_in,
 
            output reg [CASH_STR_WIDTH-1:0]  data_out
@@ -50,7 +52,7 @@ end
 
 always @* begin
     for(i = 0; i < CHANNELS; i = i + 1) begin
-        if (chan == i) begin
+        if (channel == i) begin
             data_out = data_mem_idx[i];
         end
     end
@@ -65,10 +67,10 @@ always @(posedge clk or negedge not_reset) begin
         end
     end
     else begin
-        if(wr == 1) begin
-            data_mem[index][chan] <= data_in;
+        if(need_write_data == 1) begin
+            data_mem[index][channel] <= data_in;
             `ifndef SYNTHESIS
-                    $display("[DATA MEM %0t] write %0h (index=%0h, chan=%0h)", $time, data_in, index, chan);
+                    $display("[DATA MEM %0t] write %0h (index=%0h, channel=%0h)", $time, data_in, index, channel);
                 `endif
         end
     end

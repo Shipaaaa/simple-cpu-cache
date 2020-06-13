@@ -6,8 +6,8 @@ memory_of_data instance_name (
     .clk(clk), 
     .not_reset(not_reset), 
     .index(index), 
-    .chan(chan), 
-    .wr(wr), 
+    .channel(channel), 
+    .need_write_data(need_write_data), 
     .data_in(data_in), 
     .data_out(data_out)
     );
