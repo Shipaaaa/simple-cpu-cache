@@ -10,7 +10,9 @@
 // Target Devices:
 // Tool versions:
 // Description:
-//
+//      Строка состоит из 64 байт = 2 набора по 32 байта.
+//      Старшие два бита смещения отвечают за то, с каким набором из 4 байт мы работаем
+//      sys_bval отвечает за то, с каким  байтом мы работаем в выбранном наборе
 // Dependencies:
 //
 // Revision:
@@ -21,10 +23,11 @@
 module update_data
        #(
            parameter CASH_STR_WIDTH = 64,
-           parameter OFFSET_WIDTH = 3,
+           parameter OFFSET_WIDTH = 3
        )(
            input       [31:0]               sys_wdata,
-           input       [CASH_STR_WIDTH-1:0] mem_data,
+           input       [CASH_STR_WIDTH-1:0] cache_data,
+
            input       [OFFSET_WIDTH-1:0]   offset,
            input       [3:0]                sys_bval,
 
@@ -34,21 +37,16 @@ module update_data
 reg     [31:0]  c_frame;
 wire    [31:0]  frame;
 
-/*
-    Строка состоит из 64 байт = 2 набора по 32 байта.
-    Старшие два бита смещения отвечают за то, с каким набором из 4 байт мы работаем
-    sys_bval отвечает за то, с каким  байтом мы работаем в выбранном наборе
-*/
 always @* begin
-    case(offset[3:3])
-        2'b0: begin
-            c_frame = mem_data[31:0];
-            out_data = { mem_data[63:32], frame};
+    case(offset[2])
+        1'b0: begin
+            c_frame = cache_data[31:0];
+            out_data = { cache_data[63:32], frame};
         end
 
-        2'b01: begin
-            c_frame = mem_data[63:32];
-            out_data = {frame, mem_data[31:0]};
+        1'b1: begin
+            c_frame = cache_data[63:32];
+            out_data = {frame, cache_data[31:0]};
         end
     endcase
 end
