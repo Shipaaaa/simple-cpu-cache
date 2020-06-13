@@ -1,7 +1,5 @@
 `timescale 1ns / 1ps
 
-`include "utils_async_fifo_bin.v"
-
 //////////////////////////////////////////////////////////////////////////////////
 // Company:
 // Engineer:
@@ -24,130 +22,140 @@
 module interface_cpu
        #(
            parameter ADDR_SIZE = 16,
-           parameter DATA_SIZE = 32,
-           parameter BVAL_SIZE = 4
+           parameter WORD_SIZE = 32
        )
        (
-           input  [ADDR_SIZE-1:0]  addr,
-           input  [DATA_SIZE-1:0]  sys_wdata,
-           input  [BVAL_SIZE-1:0]  sys_bval,
+           // from CPU
+           input [ADDR_SIZE-1:0]   sys_addr,
+           input [WORD_SIZE-1:0]   sys_wdata,
            input                   sys_rd,
            input                   sys_wr,
+           input [3:0]             sys_bval,
 
-           output [DATA_SIZE-1:0]  sys_rdata,
+           input                   sys_clk,
+           input                   sys_rst_n,
+           input                   cache_clk,
+           input                   cache_rst_n,
+
+           // from cache
+           input                   cache_ack,
+           input  [WORD_SIZE-1:0]  cache_rdata,
+
+           // to CPU
+           output [WORD_SIZE-1:0]  sys_rdata,
            output                  sys_ack,
-
-           output [ADDR_SIZE-1:0]  c_addr,
-           output [DATA_SIZE-1:0]  c_wdata,
-           output [BVAL_SIZE-1:0]  c_bval,
-           output                  c_rd,
-           output                  c_wr,
-
-           input  [DATA_SIZE-1:0]  c_rdata,
-           input                   c_ack,
-
-           input                   rst,
-           input                   c_clk,
-           input                   sys_clk
+           // to cache
+           output [ADDR_SIZE-1:0]   cache_addr,
+           output [WORD_SIZE-1:0]   cache_wdata,
+           output                   cache_rd,
+           output                   cache_wr,
+           output [3:0]             cache_bval
        );
+/*
+    CPU -> Cache
+*/
+reg [ADDR_SIZE-1:0] sys_addr_d1;
+reg [ADDR_SIZE-1:0] sys_addr_d2;
 
-parameter BUS_SIZE = ADDR_SIZE + DATA_SIZE + BVAL_SIZE + 2;
+reg [ADDR_SIZE-1:0] sys_wdata_d1;
+reg [ADDR_SIZE-1:0] sys_wdata_d2;
 
-wire not_reset;
+reg [3:0] sys_bval_d1;
+reg [3:0] sys_bval_d2;
 
-assign not_reset = ~rst;
+reg sys_rd_t;
+reg sys_rd_d1;
+reg sys_rd_d2;
+reg sys_rd_d3;
 
-wire [BUS_SIZE-1:0] wr_fifo_din;
-wire [BUS_SIZE-1:0] wr_fifo_dout;
-wire [DATA_SIZE:0]  rd_fifo_din;
-wire [DATA_SIZE:0]  rd_fifo_dout;
+reg sys_wr_t;
+reg sys_wr_d1;
+reg sys_wr_d2;
+reg sys_wr_d3;
 
-assign wr_fifo_din[BUS_SIZE-1]                      = sys_rd;
-assign wr_fifo_din[BUS_SIZE-2]                      = sys_wr;
-assign wr_fifo_din[BUS_SIZE-3:DATA_SIZE+ADDR_SIZE]  = sys_bval;
-assign wr_fifo_din[DATA_SIZE+ADDR_SIZE-1:DATA_SIZE] = addr;
-assign wr_fifo_din[DATA_SIZE-1:0]                   = sys_wdata;
+always @(posedge cache_clk or negedge cache_rst_n) begin
+    if(~cache_rst_n) begin
+        sys_rd_d1 <= 0;
+        sys_rd_d2 <= 0;
+        sys_rd_d3 <= 0;
 
-assign sys_ack   = rd_fifo_dout[DATA_SIZE];
-assign sys_rdata = rd_fifo_dout[DATA_SIZE-1:0];
-
-assign c_rd    = wr_fifo_dout[BUS_SIZE-1];
-assign c_wr    = wr_fifo_dout[BUS_SIZE-2];
-assign c_bval  = wr_fifo_dout[BUS_SIZE-3:DATA_SIZE+ADDR_SIZE];
-assign c_addr  = wr_fifo_dout[DATA_SIZE+ADDR_SIZE-1:DATA_SIZE];
-assign c_wdata = wr_fifo_dout[DATA_SIZE-1:0];
-
-assign rd_fifo_din[DATA_SIZE]   = c_ack;
-assign rd_fifo_din[DATA_SIZE-1:0] = c_rdata;
-
-reg c_ack_buf;
-reg sys_rd_buf;
-reg sys_wr_buf;
-reg read_rd_fifo;
-reg read_wr_fifo;
-
-wire write_rd_fifo;
-wire write_wr_fifo;
-wire rd_fifo_full;
-wire wr_fifo_full;
-wire rd_fifo_empty;
-wire wr_fifo_empty;
-
-assign write_rd_fifo = c_ack_buf != c_ack;
-assign write_wr_fifo = (sys_rd != sys_rd_buf) || (sys_wr != sys_wr_buf);
-
-always @* if (rst) begin
-        $display("RST");
-        sys_wr_buf <= 0;
-        sys_rd_buf <= 0;
-        c_ack_buf  <= 0;
-
-        read_rd_fifo <= 0;
-        read_wr_fifo <= 0;
+        sys_wr_d1 <= 0;
+        sys_wr_d2 <= 0;
+        sys_wr_d3 <= 0;
     end
+    else begin
+        sys_rd_d1 <= sys_rd_t;
+        sys_rd_d2 <= sys_rd_d1;
+        sys_rd_d3 <= sys_rd_d2;
 
-always @(posedge c_clk) begin
-    if (wr_fifo_full)  read_wr_fifo <= 1; else
-        if (wr_fifo_empty) read_wr_fifo <= 0;
+        sys_wr_d1 <= sys_wr_t;
+        sys_wr_d2 <= sys_wr_d1;
+        sys_wr_d3 <= sys_wr_d2;
 
-    c_ack_buf <= c_ack;
-    if (c_ack) begin
-        $display("[%3d] ack %b data %08x", $time, c_ack, c_rdata);
+        sys_bval_d1 <= sys_bval;
+        sys_bval_d2 <= sys_bval_d1;
+
+        sys_wdata_d1 <= sys_wdata;
+        sys_wdata_d2 <= sys_wdata_d1;
+
+        sys_addr_d1 <= sys_addr;
+        sys_addr_d2 <= sys_addr_d1;
     end
 end
-
-always @(posedge sys_clk) begin
-    if (rd_fifo_full)  read_rd_fifo <= 1; else
-        if (rd_fifo_empty) read_rd_fifo <= 0;
-
-    if (sys_wr != sys_wr_buf) $display("flipping wr -> %b", sys_wr);
-    if (sys_rd != sys_rd_buf) $display("flipping rd -> %b", sys_rd);
-    sys_rd_buf <= sys_rd;
-    sys_wr_buf <= sys_wr;
+always @(posedge sys_clk or negedge sys_rst_n) begin
+    if(~sys_rst_n) begin
+        sys_rd_t <= 0;
+        sys_wr_t <= 0;
+    end
+    else if(sys_wr == 1) begin
+        sys_wr_t <= ~sys_wr_t;
+    end
+    else if(sys_rd == 1) begin
+        sys_rd_t <= ~sys_rd_t;
+    end
 end
+assign cache_wr = (sys_wr_d2 ^ sys_wr_d3);
+assign cache_rd = (sys_rd_d2 ^ sys_rd_d3);
+assign cache_bval = sys_bval_d2;
+assign cache_addr = sys_addr_d2;
+assign cache_wdata = sys_wdata_d2;
+/*
+    Cache -> CPU
+*/
+reg [31:0] sys_rdata_d1;
+reg [31:0] sys_rdata_d2;
+reg sys_ack_t;
+reg sys_ack_d1;
+reg sys_ack_d2;
+reg sys_ack_d3;
+always @(posedge sys_clk or negedge sys_rst_n) begin
+    if(~sys_rst_n) begin
+        sys_rdata_d1 <= 0;
+        sys_rdata_d2 <= 0;
+        sys_ack_d1 <= 0;
+        sys_ack_d2 <= 0;
+        sys_ack_d3 <= 0;
+    end
+    else begin
+        sys_rdata_d1 <= cache_rdata;
+        sys_rdata_d2 <= sys_rdata_d1;
 
-async_bin_fifo #(DATA_SIZE+1) ReadFIFO (
-                   .not_reset(not_reset),    // input rst
-                   .wr_clk(c_clk),           // input wr_clk
-                   .rd_clk(sys_clk),         // input rd_clk
-                   .din(rd_fifo_din),        // input din
-                   .write(write_rd_fifo),    // input wr_en
-                   .read(read_rd_fifo),      // input rd_en
-                   .dout(rd_fifo_dout),      // output dout
-                   .full(rd_fifo_full),      // output full
-                   .empty(rd_fifo_empty)     // output empty
-               );
+        sys_ack_d1 <= sys_ack_t;
+        sys_ack_d2 <= sys_ack_d1;
+        sys_ack_d3 <= sys_ack_d2;
 
-async_bin_fifo #(BUS_SIZE) WriteFIFO (
-                   .not_reset(not_reset),    // input rst
-                   .wr_clk(sys_clk),         // input wr_clk
-                   .rd_clk(c_clk),           // input rd_clk
-                   .din(wr_fifo_din),        // input din
-                   .write(write_wr_fifo),    // input wr_en
-                   .read(read_wr_fifo),      // input rd_en
-                   .dout(wr_fifo_dout),      // output dout
-                   .full(wr_fifo_full),      // output full
-                   .empty(wr_fifo_empty)     // output empty
-               );
+
+    end
+end
+always @(posedge cache_ack or negedge cache_rst_n) begin
+    if(~cache_rst_n) begin
+        sys_ack_t <= 0;
+    end
+    else if(cache_ack == 1) begin
+        sys_ack_t <= ~sys_ack_t;
+    end
+end
+assign sys_ack = (sys_ack_d3 ^ sys_ack_d2);
+assign sys_rdata = sys_rdata_d2;
 
 endmodule
