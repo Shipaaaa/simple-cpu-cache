@@ -25,15 +25,16 @@ module control_unit(
            input         sys_rd,
            input         sys_wr,
 
-           input         hit,
-           input         fifo,
-           input         ram_ack,
+           input         is_hit,
+           input         need_use_fifo,     // Что использовать chan или fifo_chan
 
-           output reg    ram_avalid,
-           output reg    ram_wr,
+           input         ram_ack,       
 
-           output reg    wr_tag,
-           output reg    wr,
+           output reg    ram_avalid,        // ram_avalid - сигнал, разрешающий взаимодействие с ОП
+           output reg    ram_rnw,           // ram_rnw - read(1), write(0)
+
+           output reg    rewrite_tag,       // rewrite_tag - перезапись тэга
+           output reg    need_write_data,   // запись в память тэгов
 
            output reg    select_data,
            output reg    select_channel,
@@ -52,48 +53,48 @@ parameter ACK_STATE         = 6;
 reg [3:0] state;
 
 always @* begin
-    select_channel <= !hit;
+    select_channel <= !is_hit;
 
     case(state)
         IDLE_STATE: begin
-            wr <= 0;
-            wr_tag <= 0;
+            need_write_data <= 0;
+            rewrite_tag <= 0;
             sys_ack <= 0;
-            ram_wr <= 0;
+            ram_rnw <= 1;
             ram_avalid <= 0;
         end
 
         RCACHE_STATE: begin
             select_data <= 0;
-            wr_tag <= 0;
-            wr <= 0;
+            rewrite_tag <= 0;
+            need_write_data <= 0;
         end
 
         WCACHE_STATE: begin
-            wr <= 1;
+            need_write_data <= 1;
         end
 
         FIFO_STATE: begin
-            ram_wr <= 1;
+            ram_rnw <= 0;
             ram_avalid <= 1;
         end
 
         RRAM_STATE: begin
-            ram_wr <= 0;
+            ram_rnw <= 1;
             ram_avalid <= 1;
         end
 
         UPDATE_STATE: begin
             select_data <= 1;
-            wr_tag <= 1;
-            wr <= 1;
+            rewrite_tag <= 1;
+            need_write_data <= 1;
             ram_avalid <= 0;
         end
 
         ACK_STATE: begin
             sys_ack <= 1;
-            wr_tag <= 0;
-            wr <= 0;
+            rewrite_tag <= 0;
+            need_write_data <= 0;
             select_data <= 0;
         end
     endcase
@@ -106,13 +107,13 @@ always @(posedge clk or negedge not_reset) begin
     else begin
         case(state)
             IDLE_STATE: begin
-                if(hit) begin
+                if(is_hit) begin
                     if(sys_rd ^ sys_wr) begin
                         state <= RCACHE_STATE;
                     end;
                 end
                 else if(sys_rd ^ sys_wr) begin
-                    if(fifo) begin
+                    if(need_use_fifo) begin
                         state <= RCACHE_STATE;
                     end
                     else begin
@@ -122,7 +123,7 @@ always @(posedge clk or negedge not_reset) begin
             end
 
             RCACHE_STATE: begin
-                if(fifo) begin
+                if(need_use_fifo) begin
                     state <= FIFO_STATE;
                 end else
                     if(sys_rd) begin
