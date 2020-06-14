@@ -74,27 +74,28 @@ wire                        ram_avalid_c;
 
 assign cache_rdata = sr_dout;
 
-wire [(WORD_SIZE+ADDR_SIZE+2)-1:0] ram_packet_i;
+wire [(ADDR_SIZE+WORD_SIZE+2)-1:0] ram_packet_i;
 
 assign ram_packet_i = { ram_rnw_c, ram_avalid_c, ram_addr_c, ram_word };
 
-wire fw_full;
-wire fw_empty;
-wire fw_read = ~fw_empty;
-wire fw_write;
+wire                               fw_full;
+wire                               fw_empty;
+wire                               fw_read = ~fw_empty;
+wire                               fw_write;
 
-wire fr_full;
-wire fr_empty;
-wire fr_read;
-wire fr_write;
-wire [WORD_SIZE-1:0] fr_word;
+wire                               fr_full;
+wire                               fr_empty;
+wire                               fr_read;
+wire                               fr_write;
+wire [WORD_SIZE-1:0]               fr_word;
 
-wire sr_load;
-wire sr_mode;
-wire sr_shift;
+wire                               sr_load;
+wire                               sr_mode;
+wire                               sr_shift;
 
-reg fw_empty_g;
-wire [(WORD_SIZE+ADDR_SIZE+2)-1:0] ram_packet_o;
+reg                                fw_empty_g;
+wire [(ADDR_SIZE+WORD_SIZE+2)-1:0] ram_packet_o;
+
 assign ram_rnw      = ram_packet_o[WORD_SIZE+ADDR_SIZE+1];           //= ram_packet_o[45];
 assign ram_avalid   = ram_packet_o[WORD_SIZE+ADDR_SIZE];             //= ram_packet_o[44];
 assign ram_addr     = ram_packet_o[WORD_SIZE+ADDR_SIZE-1:WORD_SIZE]; //= ram_packet_o[43:32];
@@ -106,7 +107,7 @@ always @(posedge ram_clk) begin
 end
 
 // слово + ram_aks
-async_fifo #(17, 2)
+async_fifo #((WORD_SIZE+1)-1, 2)
            read_fifo (
                .not_reset(ram_rst_n),
                .rd_clk(cache_clk),
@@ -133,7 +134,7 @@ shift_reg #(CASH_STR_WIDTH, WORD_SIZE)
           );
 
 // адрес + слово + ram_rnw + ram_avalid
-async_fifo #(31, 2)
+async_fifo #((ADDR_SIZE+WORD_SIZE+2), 2)
            write_fifo(
                .not_reset(cache_not_reset),
                .rd_clk(ram_clk),

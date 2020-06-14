@@ -45,11 +45,11 @@ module interface_cpu
            output [WORD_SIZE-1:0]  sys_rdata,
            output                  sys_ack,
            // to cache
-           output [ADDR_SIZE-1:0]   cache_addr,
-           output [WORD_SIZE-1:0]   cache_wdata,
-           output                   cache_rd,
-           output                   cache_wr,
-           output [3:0]             cache_bval
+           output [ADDR_SIZE-1:0]  cache_addr,
+           output [WORD_SIZE-1:0]  cache_wdata,
+           output                  cache_rd,
+           output                  cache_wr,
+           output [3:0]            cache_bval
        );
 /*
     CPU -> Cache

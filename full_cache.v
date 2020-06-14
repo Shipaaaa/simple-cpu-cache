@@ -35,6 +35,7 @@ module full_cache
            parameter CH_NUM_WIDTH = 2,
            parameter BANKS = 256,
            parameter WORD_SIZE = 32,
+           parameter RAM_WORD_SIZE = 16,
            parameter CASH_STR_WIDTH = 64
        )
        (
@@ -52,14 +53,14 @@ module full_cache
 
            input                                             ram_clk,           // RAM_IF IN
            input                                             ram_rst_n,         // RAM_IF IN
-           input       [WORD_SIZE-1:0]                       ram_rdata,         // RAM_IF IN
+           input       [RAM_WORD_SIZE-1:0]                   ram_rdata,         // RAM_IF IN
            input                                             ram_rack,          // RAM_IF IN
 
-           output  reg [WORD_SIZE-1:0]                       sys_rdata,         // CPU
-           output  reg                                       sys_ack,           // CPU
+           output      [WORD_SIZE-1:0]                       sys_rdata,         // CPU
+           output                                            sys_ack,           // CPU
 
            output      [TAG_SIZE+INDEX_SIZE-1:0]             ram_addr,          // RAM_IF OUT
-           output      [WORD_SIZE-1:0]                       ram_wdata,         // RAM_IF OUT
+           output      [RAM_WORD_SIZE-1:0]                   ram_wdata,         // RAM_IF OUT
            output                                            ram_avalid,        // RAM_IF OUT
            output                                            ram_rnw            // RAM_IF OUT
        );
@@ -105,7 +106,7 @@ wire   [CASH_STR_WIDTH-1:0]     cache_data;             // memory_of_data OUT ->
 
 wire                            sys_ack_d;              // control_unit OUT
 
-wire   [RAM_ADDR_SIZE:0]        cache_addr;             // RAM_IF IN
+wire   [RAM_ADDR_SIZE-1:0]      cache_addr;             // RAM_IF IN
 
 always @(posedge cache_clk or negedge cache_not_reset) begin
     if(~cache_not_reset) begin
@@ -220,7 +221,7 @@ update_data
 
 assign cache_addr = cache_rnw ? {tag, index} : {fifo_tag_for_flush, index};
 
-interface_ram #(RAM_ADDR_SIZE, CASH_STR_WIDTH, WORD_SIZE)
+interface_ram #(RAM_ADDR_SIZE, CASH_STR_WIDTH, RAM_WORD_SIZE)
               interface_ram (
                   .ram_clk(ram_clk),
                   .ram_rst_n(ram_rst_n),
