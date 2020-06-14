@@ -44,23 +44,23 @@ module interface_ram
        )
        (
            // Clock domain 1: RAM
+           input                       ram_clk,
+           input                       ram_rst_n,
            input  [WORD_SIZE-1:0]      ram_rdata,
            input                       ram_ack,
-           input                       ram_rst_n,
-           input                       ram_clk,
 
-           output [WORD_SIZE-1:0]      ram_wdata,
            output [ADDR_SIZE-1:0]      ram_addr,
+           output [WORD_SIZE-1:0]      ram_wdata,
            output                      ram_avalid,
            output                      ram_rnw,
 
            // Clock domain 2: Cache
-           input  [CASH_STR_WIDTH-1:0] cache_wdata,
+           input                       cache_clk,
+           input                       cache_rst_n,
            input  [ADDR_SIZE-1:0]      cache_addr,
+           input  [CASH_STR_WIDTH-1:0] cache_wdata,
            input                       cache_avalid,
            input                       cache_rnw,
-           input                       cache_rst_n,
-           input                       cache_clk,
 
            output [CASH_STR_WIDTH-1:0] cache_rdata,
            output                      cache_ack

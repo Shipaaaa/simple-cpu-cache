@@ -1,4 +1,12 @@
 `timescale 1ns / 1ps
+
+`include "memory_of_tags.v"
+`include "memory_of_data.v"
+`include "control_unit.v"
+`include "update_data.v"
+`include "interface_ram.v"
+`include "interface_cpu.v"
+
 //////////////////////////////////////////////////////////////////////////////////
 // Company:
 // Engineer:
@@ -20,174 +28,219 @@
 //////////////////////////////////////////////////////////////////////////////////
 module full_cache
        #(
-           parameter AINDEX_WIDTH = 3,
-           parameter ATAG_WIDTH = 11,
-           parameter AOFFSET_WIDTH = 2,
-           parameter CH_NUM_WIDTH = 3,
-           parameter CASH_MEM_WIDTH = 128,
-           parameter CPU_DATA_WIDTH = 32,
+           parameter TAG_SIZE = 5,
+           parameter INDEX_SIZE = 8,
+           parameter OFFSET_SIZE = 3,
+           parameter CHANNELS = 4,
+           parameter CH_NUM_WIDTH = 2,
+           parameter BANKS = 256,
            parameter WORD_SIZE = 32,
-           parameter ADDR_SIZE = 14
+           parameter CASH_STR_WIDTH = 64
        )
        (
-           input 														sys_clk,
-           input 														sys_nReset,
-           input 														cache_clk,
-           input 														cache_nReset,
-           input 														ram_clk,
-           input 														ram_nReset,
-           input	[CPU_DATA_WIDTH - 1:0] 								sys_wdata,
-           input	[ATAG_WIDTH + AINDEX_WIDTH + AOFFSET_WIDTH - 1:0]	sys_addr,
-           input           												sys_rd,
-           input           												sys_wr,
-           input    [3:0]   											sys_bval,
+           input                                             cache_clk,         // CPU
+           input                                             cache_not_reset,   // CPU
 
-           input    [WORD_SIZE-1:0] 									ram_rdata,
-           input       		   											ram_ack,
+           input                                             sys_clk,           // CPU
+           input                                             sys_rst_n,         // CPU
 
-           output	[CASH_MEM_WIDTH - 1:0] 								mem_data,
-           output	[CPU_DATA_WIDTH - 1:0] 								sys_rdata,
-           output 	[WORD_SIZE-1:0]   									ram_wdata,
-           output 														sys_ack
+           input       [TAG_SIZE+INDEX_SIZE+OFFSET_SIZE-1:0] sys_addr,          // CPU
+           input       [WORD_SIZE-1:0]                       sys_wdata,         // CPU
+           input                                             sys_rd,            // CPU
+           input                                             sys_wr,            // CPU
+           input       [3:0]                                 sys_bval,          // CPU
+
+           input                                             ram_clk,           // RAM_IF IN
+           input                                             ram_rst_n,         // RAM_IF IN
+           input       [WORD_SIZE-1:0]                       ram_rdata,         // RAM_IF IN
+           input                                             ram_rack,          // RAM_IF IN
+
+           output  reg [WORD_SIZE-1:0]                       sys_rdata,         // CPU
+           output  reg                                       sys_ack,           // CPU
+
+           output      [TAG_SIZE+INDEX_SIZE-1:0]             ram_addr,          // RAM_IF OUT
+           output      [WORD_SIZE-1:0]                       ram_wdata,         // RAM_IF OUT
+           output                                            ram_avalid,        // RAM_IF OUT
+           output                                            ram_rnw            // RAM_IF OUT
        );
 
-wire hit;
-wire fifo;
-wire wr_tag;
-wire wr;
-wire ram_aval;
-wire cache_aval;
-wire ram_write;
-wire ram_rnw;
-wire selD;
-wire selN;
-wire cache_ram_ack;
-wire cache_ack;
-wire c_rd;
-wire c_wr;
+localparam ADDR_SIZE     = TAG_SIZE+INDEX_SIZE+OFFSET_SIZE;
+localparam RAM_ADDR_SIZE = TAG_SIZE+INDEX_SIZE;
 
-wire [CH_NUM_WIDTH - 1:0]  	    chan;
-wire [CH_NUM_WIDTH - 1:0]  	    fifo_chan;
-wire [ATAG_WIDTH - 1:0] 		fifo_tag;
-wire [CASH_MEM_WIDTH - 1:0] 	comb_out;
-wire [3:0] 						state;
-wire [CASH_MEM_WIDTH - 1:0] 	ram_data;
-wire [ADDR_SIZE-1:0] 			ram_addr;
-wire [CPU_DATA_WIDTH - 1:0] 	cache_rdata;
-wire [3:0] 						c_bval;
-wire [CPU_DATA_WIDTH - 1:0]     c_wdata;
+wire   [ADDR_SIZE-1:0]          sys_addr_in;            // CPU_IF IN
+wire   [WORD_SIZE-1:0]          sys_wdata_in;           // CPU_IF IN
+wire                            sys_wr_in;              // CPU_IF IN
+wire                            sys_rd_in;              // CPU_IF IN
+wire   [3:0]                    sys_bval_in;            // CPU_IF IN
 
-reg [CH_NUM_WIDTH - 1:0]  		data_chan;
-reg [CASH_MEM_WIDTH-1:0]  		data_in;
+reg    [WORD_SIZE-1:0]          sys_rdata_out;          // CPU_IF OUT
+reg                             sys_ack_out;            // CPU_IF OUT
 
-wire [ATAG_WIDTH + AINDEX_WIDTH + AOFFSET_WIDTH - 1:0] c_addr;
-wire [ATAG_WIDTH - 1:0] tag = c_addr[15:5];
-wire [AINDEX_WIDTH-1:0] index = c_addr[4:2];
-wire [AOFFSET_WIDTH-1:0] offset = c_addr[1:0];
+wire   [TAG_SIZE-1:0]           tag    = sys_addr_in[15:11];
+wire   [INDEX_SIZE-1:0]         index  = sys_addr_in[10:3];
+wire   [OFFSET_SIZE-1:0]        offset = sys_addr_in[2:0];
 
-always @* begin
-    data_chan <= selN ? fifo_chan : chan;
-    data_in <= selD ? ram_data : comb_out;
+wire                            rewrite_tag;            // memory_of_tags IN <- control_unit OUT
+
+wire                            is_hit;                 // memory_of_tags OUT
+wire                            need_use_fifo;          // memory_of_tags OUT -> control_unit IN
+wire   [CH_NUM_WIDTH-1:0]       channel;                // memory_of_tags OUT -> memory_of_data IN
+wire   [CH_NUM_WIDTH-1:0]       fifo_channel;           // memory_of_tags OUT
+wire   [TAG_SIZE-1:0]           fifo_tag_for_flush;     // memory_of_tags OUT
+reg    [CH_NUM_WIDTH - 1:0]     data_channel;           // memory_of_data IN
+
+wire                            need_write_data;        // memory_of_data IN <- control_unit OUT
+
+wire                            cache_ack;              // control_unit IN
+wire                            cache_avalid;           // control_unit OUT -> RAM_IF IN
+
+wire                            select_data;            // control_unit OUT -> memory_of_data IN
+wire                            select_channel;         // control_unit OUT -> memory_of_data IN
+
+
+wire   [CASH_STR_WIDTH-1:0]     cache_rdata;            // RAM_IF OUT
+wire   [CASH_STR_WIDTH-1:0]     cpu_data;               // update_data OUT
+reg    [CASH_STR_WIDTH-1:0]     data_in;                // memory_of_data IN <- RAM_IF OUT
+wire   [CASH_STR_WIDTH-1:0]     cache_data;             // memory_of_data OUT -> RAM_IF IN
+
+wire                            sys_ack_d;              // control_unit OUT
+
+wire   [RAM_ADDR_SIZE:0]        cache_addr;             // RAM_IF IN
+
+always @(posedge cache_clk or negedge cache_not_reset) begin
+    if(~cache_not_reset) begin
+        sys_rdata_out <= 32'b0;
+        sys_ack_out <= 0;
+    end
+    else begin
+        sys_ack_out <= sys_ack_d;
+        if(sys_ack_d) begin
+            case(offset[2])
+                0: sys_rdata_out <= cache_data[31:0];
+                1: sys_rdata_out <= cache_data[63:32];
+            endcase
+        end
+    end
 end
 
-
-memory_of_tags mem_of_tags(
-                   .clk(cache_clk),
-                   .nReset(cache_nReset),
-                   .tag(tag),
-                   .index(index),
-                   .wr_tag(wr_tag),
-                   .chan(chan),
-                   .fifo_chan(fifo_chan),
-                   .fifo_tag(fifo_tag),
-                   .hit(hit),
-                   .fifo(fifo)
-               );
-
-control_unit control(
-                 .clk(cache_clk),
-                 .nReset(cache_nReset),
-                 .sys_rd(c_rd),
-                 .sys_wr(c_wr),
-                 .ram_ack(cache_ram_ack),
-                 .hit(hit),
-                 .fifo(fifo),
-                 .sys_ack(cache_ack),
-                 .wr_tag(wr_tag),
-                 .wr(wr),
-                 .selD(selD),
-                 .selN(selN),
-                 .ram_avalid(cache_aval),
-                 .ram_wr(ram_wr)
-             );
-
-update_data comb(
-                .offset(offset),
-                .sys_wdata(c_wdata),
-                .c_data(mem_data),
-                .sys_bval(c_bval),
-                .out_data(comb_out)
-            );
-
-memory_of_data mem_of_data(
-                   .clk(cache_clk),
-                   .nReset(cache_nReset),
-                   .index(index),
-                   .chan(data_chan),
-                   .wr(wr),
-                   .data_in(data_in),
-                   .data_out(mem_data)
-               );
-
-wire [13:0] cache_addr = {tag, index};
-
-interface_ram ram_interface(
-                  .c_clk(cache_clk),
-                  .ram_clk(ram_clk),
-                  .c_nReset(ram_nReset),
-
-                  .c_aval(cache_aval),
-                  .c_wr(ram_wr),
-                  .ram_ack(ram_ack),
-                  .c_data_in(mem_data),
-                  .ram_data_in(ram_rdata),
-                  .c_addr(cache_addr),
-
-                  .ram_aval(ram_aval),
-                  .ram_wr(ram_rnw),
-                  .c_ack(cache_ram_ack),
-                  .c_data_out(ram_data),
-                  .ram_data_out(ram_wdata),
-                  .ram_addr(ram_addr)
-              );
-
-interface_cpu cpu_interface(
-                  .addr(sys_addr),
+interface_cpu #(ADDR_SIZE, WORD_SIZE)
+              interface_cpu(
+                  // in from CPU
+                  .sys_addr(sys_addr),
                   .sys_wdata(sys_wdata),
-                  .sys_bval(sys_bval),
                   .sys_rd(sys_rd),
                   .sys_wr(sys_wr),
+                  .sys_bval(sys_bval),
+                  .sys_clk(sys_clk),
+                  .sys_rst_n(sys_rst_n),
+                  .cache_clk(cache_clk),
+                  .cache_not_reset(cache_not_reset),
 
+                  // in from cache
+                  .cache_ack(sys_ack_out),
+                  .cache_rdata(sys_rdata_out),
+
+                  // out to cpu
                   .sys_rdata(sys_rdata),
                   .sys_ack(sys_ack),
 
-                  .c_addr(c_addr),
-                  .c_wdata(c_wdata),
-                  .c_bval(c_bval),
-                  .c_rd(c_rd),
-                  .c_wr(c_wr),
-
-                  .c_rdata(cache_rdata),
-                  .c_ack(cache_ack),
-
-                  .nReset(sys_nReset),
-                  .c_clk(cache_clk),
-                  .sys_clk(sys_clk)
+                  // out to cache
+                  .cache_addr(sys_addr_in),
+                  .cache_wdata(sys_wdata_in),
+                  .cache_rd(sys_rd_in),
+                  .cache_wr(sys_wr_in),
+                  .cache_bval(sys_bval_in)
               );
 
-assign cache_rdata = offset == 0 ? mem_data[31:0]  :
-       offset == 1 ? mem_data[63:32] :
-       offset == 2 ? mem_data[95:64] :
-       mem_data[127:96];
+memory_of_tags
+    memory_of_tags(
+        .clk(cache_clk),                // in
+        .not_reset(cache_not_reset),    // in
+        .tag(tag),                      // in
+        .index(index),                  // in
+        .rewrite_tag(rewrite_tag),      // in
+
+        .is_hit(is_hit),
+
+        .need_use_fifo(need_use_fifo),
+        .channel(channel),
+        .fifo_channel(fifo_channel),
+
+        .fifo_tag_for_flush(fifo_tag_for_flush)
+    );
+
+control_unit
+    control_unit (
+        .clk(cache_clk),                // in
+        .not_reset(cache_not_reset),    // in
+        .sys_rd(sys_rd_in),             // in
+        .sys_wr(sys_wr_in),             // in
+        .is_hit(is_hit),                // in
+        .need_use_fifo(need_use_fifo),  // in
+
+        .ram_ack(cache_ack),            // in
+
+        .ram_avalid(cache_avalid),
+        .ram_rnw(cache_rnw),
+
+        .rewrite_tag(rewrite_tag),
+        .need_write_data(need_write_data),
+
+        .select_data(select_data),
+        .select_channel(select_channel),
+
+        .sys_ack(sys_ack_d)
+    );
+
+always @* begin
+    data_channel = select_channel ? fifo_channel : channel;
+    data_in = select_data ? cache_rdata : cpu_data;
+end
+
+memory_of_data #(CHANNELS, INDEX_SIZE, CH_NUM_WIDTH, BANKS, CASH_STR_WIDTH)
+               memory_of_data(
+                   .clk(cache_clk),
+                   .not_reset(cache_not_reset),
+                   .index(index),
+                   .channel(data_channel),
+                   .need_write_data(need_write_data),
+                   .data_in(data_in),
+
+                   .data_out(cache_data)
+               );
+
+update_data
+    update_data (
+        .offset(offset),
+        .sys_wdata(sys_wdata_in),
+        .cache_data(cache_data),
+        .sys_bval(sys_bval_in),
+        .out_data(cpu_data)
+    );
+
+assign cache_addr = cache_rnw ? {tag, index} : {fifo_tag_for_flush, index};
+
+interface_ram #(RAM_ADDR_SIZE, CASH_STR_WIDTH, WORD_SIZE)
+              interface_ram (
+                  .ram_clk(ram_clk),
+                  .ram_rst_n(ram_rst_n),
+                  .ram_rdata(ram_rdata),
+                  .ram_ack(ram_rack),
+
+                  .ram_addr(ram_addr),
+                  .ram_wdata(ram_wdata),
+                  .ram_avalid(ram_avalid),
+                  .ram_rnw(ram_rnw),
+
+                  .cache_clk(cache_clk),
+                  .cache_not_reset(cache_not_reset),
+                  .cache_addr(cache_addr),
+                  .cache_wdata(cache_data),
+                  .cache_avalid(cache_avalid),
+                  .cache_rnw(cache_rnw),
+
+                  .cache_rdata(cache_rdata),
+                  .cache_ack(cache_ack)
+              );
 
 endmodule
