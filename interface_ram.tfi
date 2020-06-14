@@ -15,7 +15,7 @@ interface_ram instance_name (
     .cache_addr(cache_addr), 
     .cache_avalid(cache_avalid), 
     .cache_rnw(cache_rnw), 
-    .cache_rst_n(cache_rst_n), 
+    .cache_not_reset(cache_not_reset), 
     .cache_clk(cache_clk), 
     .cache_rdata(cache_rdata), 
     .cache_ack(cache_ack)

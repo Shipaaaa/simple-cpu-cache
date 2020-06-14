@@ -35,7 +35,7 @@ module interface_cpu
            input                   sys_clk,
            input                   sys_rst_n,
            input                   cache_clk,
-           input                   cache_rst_n,
+           input                   cache_not_reset,
 
            // from cache
            input                   cache_ack,
@@ -73,8 +73,8 @@ reg sys_wr_d1;
 reg sys_wr_d2;
 reg sys_wr_d3;
 
-always @(posedge cache_clk or negedge cache_rst_n) begin
-    if(~cache_rst_n) begin
+always @(posedge cache_clk or negedge cache_not_reset) begin
+    if(~cache_not_reset) begin
         sys_rd_d1 <= 0;
         sys_rd_d2 <= 0;
         sys_rd_d3 <= 0;
@@ -147,8 +147,8 @@ always @(posedge sys_clk or negedge sys_rst_n) begin
 
     end
 end
-always @(posedge cache_ack or negedge cache_rst_n) begin
-    if(~cache_rst_n) begin
+always @(posedge cache_ack or negedge cache_not_reset) begin
+    if(~cache_not_reset) begin
         sys_ack_t <= 0;
     end
     else if(cache_ack == 1) begin

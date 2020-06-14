@@ -3,23 +3,24 @@
 
 // Instantiate the module
 interface_cpu instance_name (
-    .addr(addr), 
+    .sys_addr(sys_addr), 
     .sys_wdata(sys_wdata), 
-    .sys_bval(sys_bval), 
     .sys_rd(sys_rd), 
     .sys_wr(sys_wr), 
+    .sys_bval(sys_bval), 
+    .sys_clk(sys_clk), 
+    .sys_rst_n(sys_rst_n), 
+    .cache_clk(cache_clk), 
+    .cache_not_reset(cache_not_reset), 
+    .cache_ack(cache_ack), 
+    .cache_rdata(cache_rdata), 
     .sys_rdata(sys_rdata), 
     .sys_ack(sys_ack), 
-    .c_addr(c_addr), 
-    .c_wdata(c_wdata), 
-    .c_bval(c_bval), 
-    .c_rd(c_rd), 
-    .c_wr(c_wr), 
-    .c_rdata(c_rdata), 
-    .c_ack(c_ack), 
-    .rst(rst), 
-    .c_clk(c_clk), 
-    .sys_clk(sys_clk)
+    .cache_addr(cache_addr), 
+    .cache_wdata(cache_wdata), 
+    .cache_rd(cache_rd), 
+    .cache_wr(cache_wr), 
+    .cache_bval(cache_bval)
     );
 
 

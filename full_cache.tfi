@@ -1,0 +1,27 @@
+
+
+
+// Instantiate the module
+full_cache instance_name (
+    .cache_clk(cache_clk), 
+    .cache_not_reset(cache_not_reset), 
+    .sys_clk(sys_clk), 
+    .sys_rst_n(sys_rst_n), 
+    .sys_addr(sys_addr), 
+    .sys_wdata(sys_wdata), 
+    .sys_rd(sys_rd), 
+    .sys_wr(sys_wr), 
+    .sys_bval(sys_bval), 
+    .ram_clk(ram_clk), 
+    .ram_rst_n(ram_rst_n), 
+    .ram_rdata(ram_rdata), 
+    .ram_rack(ram_rack), 
+    .sys_rdata(sys_rdata), 
+    .sys_ack(sys_ack), 
+    .ram_addr(ram_addr), 
+    .ram_wdata(ram_wdata), 
+    .ram_avalid(ram_avalid), 
+    .ram_rnw(ram_rnw)
+    );
+
+

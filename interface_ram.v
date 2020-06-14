@@ -56,7 +56,7 @@ module interface_ram
 
            // Clock domain 2: Cache
            input                       cache_clk,
-           input                       cache_rst_n,
+           input                       cache_not_reset,
            input  [ADDR_SIZE-1:0]      cache_addr,
            input  [CASH_STR_WIDTH-1:0] cache_wdata,
            input                       cache_avalid,
@@ -123,7 +123,7 @@ async_fifo #(17, 2)
 shift_reg #(CASH_STR_WIDTH, WORD_SIZE)
           shift_register(
               .clk(cache_clk),
-              .not_reset(cache_rst_n),
+              .not_reset(cache_not_reset),
               .din(cache_wdata),
               .din_b(fr_word),
               .load(sr_load),
@@ -135,7 +135,7 @@ shift_reg #(CASH_STR_WIDTH, WORD_SIZE)
 // адрес + слово + ram_rnw + ram_avalid
 async_fifo #(31, 2)
            write_fifo(
-               .not_reset(cache_rst_n),
+               .not_reset(cache_not_reset),
                .rd_clk(ram_clk),
                .wr_clk(cache_clk),
                .din(ram_packet_i),
@@ -150,7 +150,7 @@ async_fifo #(31, 2)
 interface_ram_controller #(13, 64)
                          controller(
                              .clk(cache_clk),
-                             .not_reset(cache_rst_n),
+                             .not_reset(cache_not_reset),
                              .cache_avalid(cache_avalid),
                              .cache_rnw(cache_rnw),
                              .fifo_empty(fr_full),
