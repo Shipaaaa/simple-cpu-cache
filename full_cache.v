@@ -34,7 +34,7 @@ module full_cache
            parameter CHANNELS = 4,
            parameter CH_NUM_WIDTH = 2,
            parameter BANKS = 256,
-           parameter WORD_SIZE = 32,
+           parameter CPU_WORD_SIZE = 32,
            parameter RAM_WORD_SIZE = 16,
            parameter CASH_STR_WIDTH = 64
        )
@@ -46,7 +46,7 @@ module full_cache
            input                                             sys_rst_n,         // CPU
 
            input       [TAG_SIZE+INDEX_SIZE+OFFSET_SIZE-1:0] sys_addr,          // CPU
-           input       [WORD_SIZE-1:0]                       sys_wdata,         // CPU
+           input       [CPU_WORD_SIZE-1:0]                   sys_wdata,         // CPU
            input                                             sys_rd,            // CPU
            input                                             sys_wr,            // CPU
            input       [3:0]                                 sys_bval,          // CPU
@@ -56,7 +56,7 @@ module full_cache
            input       [RAM_WORD_SIZE-1:0]                   ram_rdata,         // RAM_IF IN
            input                                             ram_rack,          // RAM_IF IN
 
-           output      [WORD_SIZE-1:0]                       sys_rdata,         // CPU
+           output      [CPU_WORD_SIZE-1:0]                   sys_rdata,         // CPU
            output                                            sys_ack,           // CPU
 
            output      [TAG_SIZE+INDEX_SIZE-1:0]             ram_addr,          // RAM_IF OUT
@@ -69,12 +69,12 @@ localparam ADDR_SIZE     = TAG_SIZE+INDEX_SIZE+OFFSET_SIZE;
 localparam RAM_ADDR_SIZE = TAG_SIZE+INDEX_SIZE;
 
 wire   [ADDR_SIZE-1:0]          sys_addr_in;            // CPU_IF IN
-wire   [WORD_SIZE-1:0]          sys_wdata_in;           // CPU_IF IN
+wire   [CPU_WORD_SIZE-1:0]      sys_wdata_in;           // CPU_IF IN
 wire                            sys_wr_in;              // CPU_IF IN
 wire                            sys_rd_in;              // CPU_IF IN
 wire   [3:0]                    sys_bval_in;            // CPU_IF IN
 
-reg    [WORD_SIZE-1:0]          sys_rdata_out;          // CPU_IF OUT
+reg    [CPU_WORD_SIZE-1:0]      sys_rdata_out;          // CPU_IF OUT
 reg                             sys_ack_out;            // CPU_IF OUT
 
 wire   [TAG_SIZE-1:0]           tag    = sys_addr_in[15:11];
@@ -124,7 +124,7 @@ always @(posedge cache_clk or negedge cache_not_reset) begin
     end
 end
 
-interface_cpu #(ADDR_SIZE, WORD_SIZE)
+interface_cpu #(ADDR_SIZE, CPU_WORD_SIZE)
               interface_cpu(
                   // in from CPU
                   .sys_addr(sys_addr),
