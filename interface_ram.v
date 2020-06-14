@@ -66,11 +66,11 @@ module interface_ram
            output                      cache_ack
        );
 
-wire [CASH_STR_WIDTH-1:0]   sr_dout;
-wire [WORD_SIZE-1:0]        ram_word = sr_dout[WORD_SIZE-1:0];
-wire [ADDR_SIZE-1:0]        ram_addr_c;
-wire                        ram_rnw_c;
-wire                        ram_avalid_c;
+wire [CASH_STR_WIDTH-1:0]          sr_dout;
+wire [WORD_SIZE-1:0]               ram_word = sr_dout[WORD_SIZE-1:0];
+wire [ADDR_SIZE-1:0]               ram_addr_c;
+wire                               ram_rnw_c;
+wire                               ram_avalid_c;
 
 assign cache_rdata = sr_dout;
 
