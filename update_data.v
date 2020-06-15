@@ -22,30 +22,30 @@
 //////////////////////////////////////////////////////////////////////////////////
 module update_data
        #(
-           parameter CASH_STR_WIDTH = 64,
-           parameter OFFSET_WIDTH = 3
+           parameter CACHE_STR_WIDTH = 64,
+           parameter OFFSET_WIDTH    = 3
        )(
-           input       [31:0]               sys_wdata,
-           input       [CASH_STR_WIDTH-1:0] cache_data,
+           input      [31:0]                sys_wdata,
+           input      [CACHE_STR_WIDTH-1:0] cache_data,
 
-           input       [OFFSET_WIDTH-1:0]   offset,
-           input       [3:0]                sys_bval,
+           input      [OFFSET_WIDTH-1:0]    offset,
+           input      [3:0]                 sys_bval,
 
-           output reg  [CASH_STR_WIDTH-1:0] out_data
+           output reg [CACHE_STR_WIDTH-1:0] out_data
        );
 
-reg     [31:0]  c_frame;
-wire    [31:0]  frame;
+reg  [31:0] c_frame;
+wire [31:0] frame;
 
 always @* begin
     case(offset[2])
         1'b0: begin
-            c_frame = cache_data[31:0];
+            c_frame  = cache_data[31:0];
             out_data = { cache_data[63:32], frame};
         end
 
         1'b1: begin
-            c_frame = cache_data[63:32];
+            c_frame  = cache_data[63:32];
             out_data = {frame, cache_data[31:0]};
         end
     endcase

@@ -11,22 +11,22 @@
 */
 module shift_reg
        #(
-           parameter CASH_STR_WIDTH = 64,
-           parameter SHIFT_LEN = 16
+           parameter CACHE_STR_WIDTH = 64,
+           parameter SHIFT_LEN       = 16
        )
        (
-           input                       clk,
-           input                       not_reset,
-           input [CASH_STR_WIDTH-1:0]  din,
-           input [SHIFT_LEN-1:0]       din_b,
-           input                       load,
-           input                       mode,
-           input                       shift,
+           input                        clk,
+           input                        not_reset,
+           input [CACHE_STR_WIDTH-1:0]  din,
+           input [SHIFT_LEN-1:0]        din_b,
+           input                        load,
+           input                        mode,
+           input                        shift,
 
-           output [CASH_STR_WIDTH-1:0] dout
+           output [CACHE_STR_WIDTH-1:0] dout
        );
 
-reg [CASH_STR_WIDTH-1:0] data;
+reg [CACHE_STR_WIDTH-1:0] data;
 
 always @(posedge clk or negedge not_reset) begin
     if(~not_reset) begin
@@ -36,7 +36,7 @@ always @(posedge clk or negedge not_reset) begin
         data <= din;
     end
     else if(load & mode) begin
-        data <= {din_b, data[CASH_STR_WIDTH-1:SHIFT_LEN]};
+        data <= {din_b, data[CACHE_STR_WIDTH-1:SHIFT_LEN]};
     end
     else if(~load && shift) begin
         data <= (data >> SHIFT_LEN);

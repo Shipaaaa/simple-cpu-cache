@@ -5,44 +5,44 @@
 
 module testbench_cache();
 
-localparam TAG_SIZE         = 5;
-localparam INDEX_SIZE       = 8;
-localparam OFFSET_SIZE      = 3;
+localparam TAG_SIZE          = 5;
+localparam INDEX_SIZE        = 8;
+localparam OFFSET_SIZE       = 3;
 
-localparam ADDR_SIZE        = TAG_SIZE+INDEX_SIZE+OFFSET_SIZE;
-localparam RAM_ADDR_SIZE    = TAG_SIZE+INDEX_SIZE;
+localparam ADDR_SIZE         = TAG_SIZE+INDEX_SIZE+OFFSET_SIZE;
+localparam RAM_ADDR_SIZE     = TAG_SIZE+INDEX_SIZE;
 
-localparam WORD_SIZE        = 32;
-localparam RAM_WORD_SIZE    = 16;
-localparam CASH_STR_WIDTH   = 64;
+localparam WORD_SIZE         = 32;
+localparam RAM_WORD_SIZE     = 16;
+localparam CACHE_STR_WIDTH   = 64;
 
-reg cache_clk               = 1'b0;
-reg sys_clk                 = 1'b0;
-reg ram_clk                 = 1'b0;
+reg cache_clk                = 1'b0;
+reg sys_clk                  = 1'b0;
+reg ram_clk                  = 1'b0;
 
 // inputs
-reg    [ADDR_SIZE-1:0]      addr;
-reg    [WORD_SIZE-1:0]      wdata;
-reg    [3:0]                bval;
-reg                         rd;
-reg                         wr;
-reg                         rst;
+reg    [ADDR_SIZE-1:0]       addr;
+reg    [WORD_SIZE-1:0]       wdata;
+reg    [3:0]                 bval;
+reg                          rd;
+reg                          wr;
+reg                          rst;
 
 // ram connectors
-wire                        ram_ack;
-wire   [RAM_WORD_SIZE-1:0]  ram_data_in;
-wire   [RAM_WORD_SIZE-1:0]  ram_data_out;
-wire   [RAM_ADDR_SIZE-1:0]  ram_addr;
-wire                        ram_aval;
-wire                        ram_rnw;
-wire                        rst_n;
+wire                         ram_ack;
+wire   [RAM_WORD_SIZE-1:0]   ram_data_in;
+wire   [RAM_WORD_SIZE-1:0]   ram_data_out;
+wire   [RAM_ADDR_SIZE-1:0]   ram_addr;
+wire                         ram_aval;
+wire                         ram_rnw;
+wire                         rst_n;
 
 // outputs
-output [WORD_SIZE-1:0]      sys_rdata;
-wire                        ack;
-wire   [CASH_STR_WIDTH-1:0] backdoor;
+output [WORD_SIZE-1:0]       sys_rdata;
+wire                         ack;
+wire   [CACHE_STR_WIDTH-1:0] backdoor;
 
-assign                      rst_n = ~rst;
+assign                       rst_n = ~rst;
 
 full_cache
     full_cache(
@@ -68,7 +68,7 @@ full_cache
         .ram_rnw(ram_rnw)
     );
 
-RAM # (RAM_ADDR_SIZE, RAM_WORD_SIZE, CASH_STR_WIDTH, 5.0) ram(
+RAM # (RAM_ADDR_SIZE, RAM_WORD_SIZE, CACHE_STR_WIDTH, 5.0) ram(
         .ram_wdata(ram_data_out),
         .ram_addr(ram_addr),
         .ram_avalid(ram_aval),
@@ -101,7 +101,7 @@ task expect_read;
 endtask
 
 task expect_write;
-    input [CASH_STR_WIDTH-1:0] exp_data;
+    input [CACHE_STR_WIDTH-1:0] exp_data;
     if (exp_data != backdoor) begin
         $display("<--- [%5d] rst=%b rd=%b wr=%b addr=%04x bval=%4b wdata=%08x data=%032x/%032x",
                  $time, rst, rd, wr, addr, bval, wdata, backdoor, exp_data);
@@ -116,10 +116,6 @@ endtask
 initial repeat (20000) begin #53 sys_clk   =~sys_clk;   end
 initial repeat (10000) begin #16 cache_clk =~cache_clk; end
 initial repeat (30000) begin #5  ram_clk   =~ram_clk;   end
-
-// initial repeat (20000) begin #5  sys_clk   =~sys_clk;   end
-// initial repeat (10000) begin #16 cache_clk =~cache_clk; end
-// initial repeat (30000) begin #53 ram_clk   =~ram_clk;   end
 
 
 initial @(negedge sys_clk) begin

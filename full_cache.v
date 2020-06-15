@@ -36,7 +36,7 @@ module full_cache
            parameter BANKS = 256,
            parameter CPU_WORD_SIZE = 32,
            parameter RAM_WORD_SIZE = 16,
-           parameter CASH_STR_WIDTH = 64
+           parameter CACHE_STR_WIDTH = 64
        )
        (
            input                                             cache_clk,         // CPU
@@ -99,10 +99,10 @@ wire                            select_data;            // control_unit OUT -> m
 wire                            select_channel;         // control_unit OUT -> memory_of_data IN
 
 
-wire   [CASH_STR_WIDTH-1:0]     cache_rdata;            // RAM_IF OUT
-wire   [CASH_STR_WIDTH-1:0]     cpu_data;               // update_data OUT
-reg    [CASH_STR_WIDTH-1:0]     data_in;                // memory_of_data IN <- RAM_IF OUT
-wire   [CASH_STR_WIDTH-1:0]     cache_data;             // memory_of_data OUT -> RAM_IF IN
+wire   [CACHE_STR_WIDTH-1:0]    cache_rdata;            // RAM_IF OUT
+wire   [CACHE_STR_WIDTH-1:0]    cpu_data;               // update_data OUT
+reg    [CACHE_STR_WIDTH-1:0]    data_in;                // memory_of_data IN <- RAM_IF OUT
+wire   [CACHE_STR_WIDTH-1:0]    cache_data;             // memory_of_data OUT -> RAM_IF IN
 
 wire                            sys_ack_d;              // control_unit OUT
 
@@ -198,7 +198,7 @@ always @* begin
     data_in = select_data ? cache_rdata : cpu_data;
 end
 
-memory_of_data #(CHANNELS, INDEX_SIZE, CH_NUM_WIDTH, BANKS, CASH_STR_WIDTH)
+memory_of_data #(CHANNELS, INDEX_SIZE, CH_NUM_WIDTH, BANKS, CACHE_STR_WIDTH)
                memory_of_data(
                    .clk(cache_clk),
                    .not_reset(cache_not_reset),
@@ -221,7 +221,7 @@ update_data
 
 assign cache_addr = cache_rnw ? {tag, index} : {fifo_tag_for_flush, index};
 
-interface_ram #(RAM_ADDR_SIZE, CASH_STR_WIDTH, RAM_WORD_SIZE)
+interface_ram #(RAM_ADDR_SIZE, CACHE_STR_WIDTH, RAM_WORD_SIZE)
               interface_ram (
                   .ram_clk(ram_clk),
                   .ram_rst_n(ram_rst_n),

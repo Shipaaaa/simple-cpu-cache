@@ -38,63 +38,63 @@
 */
 module interface_ram
        #(
-           parameter ADDR_SIZE = 13,
-           parameter CASH_STR_WIDTH = 64,
-           parameter WORD_SIZE = 16
+           parameter ADDR_SIZE       = 13,
+           parameter CACHE_STR_WIDTH = 64,
+           parameter WORD_SIZE       = 16
        )
        (
            // Clock domain 1: RAM
-           input                       ram_clk,
-           input                       ram_rst_n,
-           input  [WORD_SIZE-1:0]      ram_rdata,
-           input                       ram_ack,
+           input                        ram_clk,
+           input                        ram_rst_n,
+           input  [WORD_SIZE-1:0]       ram_rdata,
+           input                        ram_ack,
 
-           output [ADDR_SIZE-1:0]      ram_addr,
-           output [WORD_SIZE-1:0]      ram_wdata,
-           output                      ram_avalid,
-           output                      ram_rnw,
+           output [ADDR_SIZE-1:0]       ram_addr,
+           output [WORD_SIZE-1:0]       ram_wdata,
+           output                       ram_avalid,
+           output                       ram_rnw,
 
            // Clock domain 2: Cache
-           input                       cache_clk,
-           input                       cache_not_reset,
-           input  [ADDR_SIZE-1:0]      cache_addr,
-           input  [CASH_STR_WIDTH-1:0] cache_wdata,
-           input                       cache_avalid,
-           input                       cache_rnw,
+           input                        cache_clk,
+           input                        cache_not_reset,
+           input  [ADDR_SIZE-1:0]       cache_addr,
+           input  [CACHE_STR_WIDTH-1:0] cache_wdata,
+           input                        cache_avalid,
+           input                        cache_rnw,
 
-           output [CASH_STR_WIDTH-1:0] cache_rdata,
-           output                      cache_ack
+           output [CACHE_STR_WIDTH-1:0] cache_rdata,
+           output                       cache_ack
        );
 
-wire [CASH_STR_WIDTH-1:0]          sr_dout;
-wire [WORD_SIZE-1:0]               ram_word = sr_dout[WORD_SIZE-1:0];
-wire [ADDR_SIZE-1:0]               ram_addr_c;
-wire                               ram_rnw_c;
-wire                               ram_avalid_c;
+wire [CACHE_STR_WIDTH-1:0]          sr_dout;
+wire [WORD_SIZE-1:0]                ram_word = sr_dout[WORD_SIZE-1:0];
+wire [ADDR_SIZE-1:0]                ram_addr_c;
+wire                                ram_rnw_c;
+wire                                ram_avalid_c;
 
 assign cache_rdata = sr_dout;
 
-wire [(ADDR_SIZE+WORD_SIZE+2)-1:0] ram_packet_i;
+wire [(ADDR_SIZE+WORD_SIZE+2)-1:0]  ram_packet_i;
 
 assign ram_packet_i = { ram_rnw_c, ram_avalid_c, ram_addr_c, ram_word };
 
-wire                               fw_full;
-wire                               fw_empty;
-wire                               fw_read = ~fw_empty;
-wire                               fw_write;
+wire                                fw_full;
+wire                                fw_empty;
+wire                                fw_read = ~fw_empty;
+wire                                fw_write;
 
-wire                               fr_full;
-wire                               fr_empty;
-wire                               fr_read;
-wire                               fr_write;
-wire [WORD_SIZE-1:0]               fr_word;
+wire                                fr_full;
+wire                                fr_empty;
+wire                                fr_read;
+wire                                fr_write;
+wire [WORD_SIZE-1:0]                fr_word;
 
-wire                               sr_load;
-wire                               sr_mode;
-wire                               sr_shift;
+wire                                sr_load;
+wire                                sr_mode;
+wire                                sr_shift;
 
-reg                                fw_empty_g;
-wire [(ADDR_SIZE+WORD_SIZE+2)-1:0] ram_packet_o;
+reg                                 fw_empty_g;
+wire [(ADDR_SIZE+WORD_SIZE+2)-1:0]  ram_packet_o;
 
 assign ram_rnw      = ram_packet_o[WORD_SIZE+ADDR_SIZE+1];           //= ram_packet_o[45];
 assign ram_avalid   = ram_packet_o[WORD_SIZE+ADDR_SIZE];             //= ram_packet_o[44];
@@ -121,7 +121,7 @@ async_fifo #((WORD_SIZE+1)-1, 2)
                .full(fr_full)
            );
 
-shift_reg #(CASH_STR_WIDTH, WORD_SIZE)
+shift_reg #(CACHE_STR_WIDTH, WORD_SIZE)
           shift_register(
               .clk(cache_clk),
               .not_reset(cache_not_reset),

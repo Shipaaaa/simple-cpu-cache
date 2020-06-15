@@ -20,11 +20,11 @@
 //////////////////////////////////////////////////////////////////////////////////
 module memory_of_data
        #(
-           parameter CHANNELS = 4,
-           parameter AINDEX_WIDTH = 8,
-           parameter CH_NUM_WIDTH = 2,
-           parameter BANKS = 256,
-           parameter CASH_STR_WIDTH = 64
+           parameter CHANNELS        = 4,
+           parameter AINDEX_WIDTH    = 8,
+           parameter CH_NUM_WIDTH    = 2,
+           parameter BANKS           = 256,
+           parameter CACHE_STR_WIDTH = 64
        )
        (
            input                            clk,
@@ -34,13 +34,13 @@ module memory_of_data
            input      [CH_NUM_WIDTH-1:0]    channel,
            
            input                            need_write_data,
-           input      [CASH_STR_WIDTH-1:0]  data_in,
+           input      [CACHE_STR_WIDTH-1:0] data_in,
 
-           output reg [CASH_STR_WIDTH-1:0]  data_out
+           output reg [CACHE_STR_WIDTH-1:0] data_out
        );
 
-reg     [CASH_STR_WIDTH-1:0] data_mem     [BANKS-1:0] [CHANNELS-1:0];
-wire    [CASH_STR_WIDTH-1:0] data_mem_idx [CHANNELS-1:0];
+reg     [CACHE_STR_WIDTH-1:0] data_mem     [BANKS-1:0] [CHANNELS-1:0];
+wire    [CACHE_STR_WIDTH-1:0] data_mem_idx [CHANNELS-1:0];
 
 genvar g, h;
 

@@ -20,29 +20,29 @@
 //////////////////////////////////////////////////////////////////////////////////
 module interface_ram_controller
        #(
-           parameter ADDR_SIZE = 13,
-           parameter CASH_STR_WIDTH = 64
+           parameter ADDR_SIZE       = 13,
+           parameter CACHE_STR_WIDTH = 64
        )
        (
-           input                            clk,
-           input                            not_reset,
-           input                            cache_avalid,
-           input       [ADDR_SIZE-1:0]      cache_addr,
-           input                            cache_rnw,
-           input                            fifo_empty,
-           input                            fifo_full,
-           input                            rfifo_empty,
-           input       [CASH_STR_WIDTH-1:0] cache_wdata,
+           input                             clk,
+           input                             not_reset,
+           input                             cache_avalid,
+           input       [ADDR_SIZE-1:0]       cache_addr,
+           input                             cache_rnw,
+           input                             fifo_empty,
+           input                             fifo_full,
+           input                             rfifo_empty,
+           input       [CACHE_STR_WIDTH-1:0] cache_wdata,
 
-           output reg                       write,
-           output reg                       read,
-           output reg                       cache_ack,
-           output reg  [ADDR_SIZE-1:0]      ram_addr,
-           output reg                       ram_rnw,
-           output reg                       ram_avalid,
-           output reg                       sr_load,
-           output reg                       sr_mode,
-           output reg                       sr_shift
+           output reg                        write,
+           output reg                        read,
+           output reg                        cache_ack,
+           output reg  [ADDR_SIZE-1:0]       ram_addr,
+           output reg                        ram_rnw,
+           output reg                        ram_avalid,
+           output reg                        sr_load,
+           output reg                        sr_mode,
+           output reg                        sr_shift
        );
 
 localparam S_IDLE       = 0;

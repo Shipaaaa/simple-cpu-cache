@@ -4,24 +4,24 @@
 
 module async_fifo
        #(
-           parameter CASH_STR_WIDTH = 64,
-           parameter ADDR_WIDTH = 2,
-           parameter FIFO_DEPTH = (1 << ADDR_WIDTH)
+           parameter CACHE_STR_WIDTH = 64,
+           parameter ADDR_WIDTH      = 2,
+           parameter FIFO_DEPTH      = (1 << ADDR_WIDTH)
        )
        (
-           input                           not_reset,
-           input                           rd_clk,
-           input                           wr_clk,
-           input      [CASH_STR_WIDTH-1:0] din,
-           input                           read,
-           input                           write,
+           input                            not_reset,
+           input                            rd_clk,
+           input                            wr_clk,
+           input      [CACHE_STR_WIDTH-1:0] din,
+           input                            read,
+           input                            write,
 
-           output reg [CASH_STR_WIDTH-1:0] dout,
-           output reg                      empty,
-           output reg                      full
+           output reg [CACHE_STR_WIDTH-1:0] dout,
+           output reg                       empty,
+           output reg                       full
        );
 
-reg  [CASH_STR_WIDTH-1:0]   FIFO [FIFO_DEPTH-1:0];
+reg  [CACHE_STR_WIDTH-1:0]  FIFO [FIFO_DEPTH-1:0];
 
 wire [ADDR_WIDTH-1:0]       p_read;
 wire [ADDR_WIDTH-1:0]       p_write;
@@ -34,9 +34,9 @@ reg                         status;
 wire                        preFull;
 wire                        preEmpty;
 
-assign eq_addr = (p_read == p_write);
+assign eq_addr  = (p_read == p_write);
 assign write_en = (write & ~full);
-assign read_en = (read & ~empty);
+assign read_en  = (read & ~empty);
 
 assign preEmpty = (~status & eq_addr);
 assign preFull  = (status & eq_addr);
@@ -113,7 +113,7 @@ always @(posedge wr_clk or negedge not_reset) begin
     end
     else if(write_en) begin
         FIFO[p_write] <= din;
-        $display("[%0t] write %0h to pos %0h", $time, din, p_write);
+        $display("[FIFO] [%0t] write %0h to pos %0h", $time, din, p_write);
     end
 end
 
