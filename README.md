@@ -20,7 +20,7 @@ iverilog memory_of_tags.v memory_of_tags_testfixture.v && vvp ./a.out
 Временная диаграмма:
 
 ```bash
-gtkwave ./dump.vcd
+/Applications/gtkwave.app/Contents/Resources/bin/gtkwave ./dump.vcd
 ```
 
 ## Запуск полного теста
@@ -34,5 +34,5 @@ iverilog full_cache_testfixture.v && vvp ./full_work.out
 Временная диаграмма:
 
 ```bash
-gtkwave ./dump.vcd
+/Applications/gtkwave.app/Contents/Resources/bin/gtkwave ./dump.vcd
 ```
