@@ -28,7 +28,7 @@ module control_unit(
            input         is_hit,
            input         need_use_fifo,     // Что использовать chan или fifo_chan
 
-           input         ram_ack,       
+           input         ram_ack,
 
            output reg    ram_avalid,        // ram_avalid - сигнал, разрешающий взаимодействие с ОП
            output reg    ram_rnw,           // ram_rnw - read(1), write(0)
@@ -51,6 +51,8 @@ parameter UPDATE_STATE      = 5;
 parameter ACK_STATE         = 6;
 
 reg [3:0] state;
+reg       local_rd;
+reg       local_wr;
 
 always @* begin
     select_channel <= !is_hit;
@@ -107,6 +109,11 @@ always @(posedge clk or negedge not_reset) begin
     else begin
         case(state)
             IDLE_STATE: begin
+                $display("[CONTROL_UNIT] [%3d] IDLE_STATE", $time);
+
+                local_rd <= sys_rd;
+                local_wr <= sys_wr;
+
                 if(is_hit) begin
                     if(sys_rd ^ sys_wr) begin
                         state <= RCACHE_STATE;
@@ -123,40 +130,52 @@ always @(posedge clk or negedge not_reset) begin
             end
 
             RCACHE_STATE: begin
+                $display("[CONTROL_UNIT] [%3d] RCACHE_STATE", $time);
+
                 if(need_use_fifo) begin
                     state <= FIFO_STATE;
                 end else
-                    if(sys_rd) begin
+                    if(local_rd) begin
                         state <= ACK_STATE;
                     end
-                    else if(sys_wr) begin
+                    else if(local_wr) begin
                         state <= WCACHE_STATE;
                     end
             end
 
             WCACHE_STATE: begin
+                $display("[CONTROL_UNIT] [%3d] WCACHE_STATE", $time);
+
                 state <= ACK_STATE;
             end
 
             FIFO_STATE: begin
+                $display("[CONTROL_UNIT] [%3d] FIFO_STATE", $time);
+
                 if(ram_ack) begin
                     state <= RRAM_STATE;
                 end
             end
 
             RRAM_STATE: begin
+                $display("[CONTROL_UNIT] [%3d] RRAM_STATE", $time);
+
                 if(ram_ack) begin
                     state <= UPDATE_STATE;
                 end
             end
 
             UPDATE_STATE: begin
-                if(sys_rd ^ sys_wr) begin
+                $display("[CONTROL_UNIT] [%3d] UPDATE_STATE", $time);
+
+                if(local_rd ^ local_wr) begin
                     state <= RCACHE_STATE;
                 end
             end
 
             ACK_STATE: begin
+                $display("[CONTROL_UNIT] [%3d] ACK_STATE", $time);
+
                 if(sys_rd == 0 && sys_wr == 0) begin
                     state <= IDLE_STATE;
                 end
