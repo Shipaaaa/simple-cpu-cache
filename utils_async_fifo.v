@@ -36,10 +36,10 @@ wire                        preEmpty;
 
 assign eq_addr  = (p_read == p_write);
 assign write_en = (write & ~full);
-assign read_en  = (read & ~empty);
+assign read_en  = (read  & ~empty);
 
 assign preEmpty = (~status & eq_addr);
-assign preFull  = (status & eq_addr);
+assign preFull  = ( status & eq_addr);
 
 always @(posedge rd_clk or posedge preEmpty) begin
     if(preEmpty) begin
@@ -61,11 +61,11 @@ end
 
 assign setStatus = (
            (p_write[ADDR_WIDTH-2] ~^ p_read[ADDR_WIDTH-1]) &
-           (p_write[ADDR_WIDTH-1] ^ p_read[ADDR_WIDTH-2])
+           (p_write[ADDR_WIDTH-1] ^  p_read[ADDR_WIDTH-2])
        );
 
 assign rstStatus = (
-           (p_write[ADDR_WIDTH-2] ^ p_read[ADDR_WIDTH-1])  &
+           (p_write[ADDR_WIDTH-2] ^  p_read[ADDR_WIDTH-1])  &
            (p_write[ADDR_WIDTH-1] ~^ p_read[ADDR_WIDTH-2])
        );
 
@@ -100,6 +100,8 @@ always @(posedge rd_clk or negedge not_reset) begin
     end
     else if(read_en) begin
         dout <= FIFO[p_read];
+
+        $display("[FIFO] [%0t] read %0h to %0h", $time, dout, p_read);
     end
 end
 
@@ -113,6 +115,7 @@ always @(posedge wr_clk or negedge not_reset) begin
     end
     else if(write_en) begin
         FIFO[p_write] <= din;
+
         $display("[FIFO] [%0t] write %0h to pos %0h", $time, din, p_write);
     end
 end

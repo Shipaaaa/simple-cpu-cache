@@ -57,8 +57,8 @@ module interface_cpu
 reg [ADDR_SIZE-1:0] sys_addr_d1;
 reg [ADDR_SIZE-1:0] sys_addr_d2;
 
-reg [ADDR_SIZE-1:0] sys_wdata_d1;
-reg [ADDR_SIZE-1:0] sys_wdata_d2;
+reg [WORD_SIZE-1:0] sys_wdata_d1;
+reg [WORD_SIZE-1:0] sys_wdata_d2;
 
 reg [3:0] sys_bval_d1;
 reg [3:0] sys_bval_d2;

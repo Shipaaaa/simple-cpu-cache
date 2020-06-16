@@ -102,8 +102,11 @@ assign ram_addr     = ram_packet_o[WORD_SIZE+ADDR_SIZE-1:WORD_SIZE]; //= ram_pac
 assign ram_wdata    = ram_packet_o[WORD_SIZE-1:0];                   //= ram_packet_o[31:0];
 
 reg [WORD_SIZE-1:0] ram_rdata_d;
+reg ram_ask_with_delay;
+
 always @(posedge ram_clk) begin
     ram_rdata_d <= ram_rdata;
+    ram_ask_with_delay <= ram_ack;
 end
 
 // слово + ram_aks
@@ -114,7 +117,7 @@ async_fifo #((WORD_SIZE+1)-1, 2)
                .wr_clk(ram_clk),
                .din(ram_rdata_d),
                .read(fr_read),
-               .write(ram_ack),
+               .write(ram_ask_with_delay),
 
                .dout(fr_word),
                .empty(fr_empty),
