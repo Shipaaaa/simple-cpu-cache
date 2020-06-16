@@ -90,12 +90,10 @@ end
 task expect_read;
     input [WORD_SIZE-1:0] exp_data;
     if (exp_data != sys_rdata) begin
-        $display("<--- [%5d] rst=%b rd=%b wr=%b addr=%04x bval=%4b wdata=%08x sys_rdata=%08x/%08x",
+        $display("---> read [%5d] rst=%b; rd=%b; wr=%b; addr=16'h%04x; bval=4'b%4b; wdata=32'h%08x; sys_rdata=%08x/%08x;",
                  $time, rst, rd, wr, addr, bval, wdata, sys_rdata, exp_data);
-        $display("TEST FAILED");
-        $finish;
     end else begin
-        $display("<--- [%5d] rst=%b rd=%b wr=%b addr=%04x bval=%4b wdata=%08x sys_rdata=%08x",
+        $display("---> read [%5d] rst=%b; rd=%b; wr=%b; addr=16'h%04x; bval=4'b%4b; wdata=32'h%08x; sys_rdata=%08x;",
                  $time, rst, rd, wr, addr, bval, wdata, sys_rdata);
     end
 endtask
@@ -103,12 +101,10 @@ endtask
 task expect_write;
     input [CACHE_STR_WIDTH-1:0] exp_data;
     if (exp_data != backdoor) begin
-        $display("<--- [%5d] rst=%b rd=%b wr=%b addr=%04x bval=%4b wdata=%08x data=%032x/%032x",
+        $display("<--- write [%5d] rst=%b; rd=%b; wr=%b; addr=16'h%04x; bval=4'b%4b; wdata=32'h%08x; data=%016x/%016x;",
                  $time, rst, rd, wr, addr, bval, wdata, backdoor, exp_data);
-        $display("TEST FAILED");
-        $finish;
     end else begin
-        $display("<--- [%5d] rst=%b rd=%b wr=%b addr=%04x bval=%4b wdata=%08x data=%032x",
+        $display("<--- write [%5d] rst=%b; rd=%b; wr=%b; addr=16'h%04x; bval=4'b%4b; wdata=32'h%08x; data=%016x;",
                  $time, rst, rd, wr, addr, bval, wdata, backdoor);
     end
 endtask
@@ -119,25 +115,25 @@ initial repeat (30000) begin #53 ram_clk   =~ram_clk;   end
 
 
 initial @(negedge sys_clk) begin
-    rst=1; rd=0; wr=0; addr=16'hABCD; bval=4'b1111; wdata=32'hdeadbeef; @(negedge sys_clk);
-    rst=0; rd=1; wr=0; addr=16'hABCD; bval=4'b1111; wdata=32'hdeadbeef; @(negedge sys_clk) rd=0; wr=0; @(negedge ack) expect_read(16'h6000);              @(negedge sys_clk); // read miss
-    rst=0; rd=1; wr=0; addr=16'hABCD; bval=4'b1111; wdata=32'hdeadbeef; @(negedge sys_clk) rd=0; wr=0; @(negedge ack) expect_read(16'h6000);              @(negedge sys_clk); // read hit
-    rst=0; rd=0; wr=1; addr=16'hBBCD; bval=4'b1111; wdata=32'hdeadbeef; @(negedge sys_clk) rd=0; wr=0; @(negedge ack) expect_write(64'hdeadbeef10009bbc); @(negedge sys_clk); // write miss
-    rst=0; rd=0; wr=1; addr=16'hABCD; bval=4'b1111; wdata=32'hdeadbeef; @(negedge sys_clk) rd=0; wr=0; @(negedge ack) expect_write(64'hdeadbeef10009abc); @(negedge sys_clk); // write hit
-    rst=0; rd=1; wr=0; addr=16'hABCD; bval=4'b1111; wdata=32'hdeadbeef; @(negedge sys_clk) rd=0; wr=0; @(negedge ack) expect_read(16'hbeef);              @(negedge sys_clk); // read hit, the same data
-    rst=0; rd=0; wr=1; addr=16'hABC0; bval=4'b1111; wdata=32'hdeadf00d; @(negedge sys_clk) rd=0; wr=0; @(negedge ack) expect_write(64'hdeadbeefdeadf00d); @(negedge sys_clk); // write hit, same line
-    rst=0; rd=0; wr=1; addr=16'hABC4; bval=4'b1001; wdata=32'hb44dc0d3; @(negedge sys_clk) rd=0; wr=0; @(negedge ack) expect_write(64'hdeadbeefdeadf00d); @(negedge sys_clk); // write hit, one byte
-    rst=0; rd=0; wr=1; addr=16'hABC8; bval=4'b0010; wdata=32'hb44dc0d3; @(negedge sys_clk) rd=0; wr=0; @(negedge ack) expect_write(64'hdeadbeefdeadf00d); @(negedge sys_clk); // write hit, one byte
+    rst=1; rd=0; wr=0; addr=16'b0000000000000000; bval=4'b0000; wdata=32'h00000000; @(negedge sys_clk);
+    rst=0; rd=1; wr=0; addr=16'b0000100000001000; bval=4'b0000; wdata=32'h00000000; @(negedge sys_clk) rd=0; wr=0; @(negedge ack) expect_read(32'h1000080f);          @(negedge sys_clk); // read miss
+    rst=0; rd=1; wr=0; addr=16'b0000100000001000; bval=4'b0000; wdata=32'h00000000; @(negedge sys_clk) rd=0; wr=0; @(negedge ack) expect_read(32'h1000080f);          @(negedge sys_clk); // read hit
+    rst=0; rd=0; wr=1; addr=16'b0001100000011100; bval=4'b1111; wdata=32'hBEEFF00D; @(negedge sys_clk) rd=0; wr=0; @(negedge ack) expect_write(64'h300020001000080f); @(negedge sys_clk); // write miss
+    rst=0; rd=0; wr=1; addr=16'b0001100000011100; bval=4'b1111; wdata=32'hBEEFF00D; @(negedge sys_clk) rd=0; wr=0; @(negedge ack) expect_write(64'h300020001000181f); @(negedge sys_clk); // write hit
+    rst=0; rd=1; wr=0; addr=16'b0001100000011100; bval=4'b0000; wdata=32'h00000000; @(negedge sys_clk) rd=0; wr=0; @(negedge ack) expect_read(32'hbeeff00d);          @(negedge sys_clk); // read hit, the same data
+    rst=0; rd=0; wr=1; addr=16'b0001100000011000; bval=4'b1111; wdata=32'hBEEFF00D; @(negedge sys_clk) rd=0; wr=0; @(negedge ack) expect_write(64'h300020001000181f); @(negedge sys_clk); // write hit, same line
+    rst=0; rd=0; wr=1; addr=16'b0011100000011000; bval=4'b0001; wdata=32'hBEEFF00D; @(negedge sys_clk) rd=0; wr=0; @(negedge ack) expect_write(64'h300020001000381f); @(negedge sys_clk); // write hit, one byte
+    rst=0; rd=0; wr=1; addr=16'b0001100000011000; bval=4'b0010; wdata=32'hBEEFF00D; @(negedge sys_clk) rd=0; wr=0; @(negedge ack) expect_write(64'h300020001000381f); @(negedge sys_clk); // write hit, one byte
 
-    rst=0; rd=0; wr=1; addr=16'hA00C; bval=4'b1111; wdata=32'ha000a000; @(negedge sys_clk) rd=0; wr=0; @(negedge ack) expect_write(64'ha000a00010009a00); @(negedge sys_clk); // write miss, bank X
-    rst=0; rd=0; wr=1; addr=16'h700C; bval=4'b1111; wdata=32'h70007000; @(negedge sys_clk) rd=0; wr=0; @(negedge ack) expect_write(64'h7000700010009700); @(negedge sys_clk); // write miss, bank X
-    rst=0; rd=0; wr=1; addr=16'h100C; bval=4'b1111; wdata=32'h10001000; @(negedge sys_clk) rd=0; wr=0; @(negedge ack) expect_write(64'h1000100010009100); @(negedge sys_clk); // write miss, bank X
-    rst=0; rd=0; wr=1; addr=16'hF00C; bval=4'b1111; wdata=32'hf000f000; @(negedge sys_clk) rd=0; wr=0; @(negedge ack) expect_write(64'hf000f00010009f00); @(negedge sys_clk); // write miss, bank X
-    rst=0; rd=0; wr=1; addr=16'hE00C; bval=4'b1111; wdata=32'he000e000; @(negedge sys_clk) rd=0; wr=0; @(negedge ack) expect_write(64'he000e00010009e00); @(negedge sys_clk); // write miss, bank X
-    rst=0; rd=0; wr=1; addr=16'hA008; bval=4'b1111; wdata=32'ha000a000; @(negedge sys_clk) rd=0; wr=0; @(negedge ack) expect_write(64'h7000600010009a00); @(negedge sys_clk); // write miss, bank X
-    rst=0; rd=0; wr=1; addr=16'h1008; bval=4'b1111; wdata=32'h10001000; @(negedge sys_clk) rd=0; wr=0; @(negedge ack) expect_write(64'h1000100010009100); @(negedge sys_clk); // write hit,  bank X
-    rst=0; rd=0; wr=1; addr=16'hF008; bval=4'b1111; wdata=32'hf000f000; @(negedge sys_clk) rd=0; wr=0; @(negedge ack) expect_write(64'hf000f00010009f00); @(negedge sys_clk); // write hit,  bank X
-    rst=0; rd=0; wr=1; addr=16'hE008; bval=4'b1111; wdata=32'he000e000; @(negedge sys_clk) rd=0; wr=0; @(negedge ack) expect_write(64'he000e00010009e00); @(negedge sys_clk); // write hit,  bank X, get previously written instead of sudo-ram generated
+    rst=0; rd=0; wr=1; addr=16'b1111100000111000; bval=4'b1111; wdata=32'ha000a000; @(negedge sys_clk) rd=0; wr=0; @(negedge ack) expect_write(64'h300020001000381f); @(negedge sys_clk); // write miss, bank X
+    rst=0; rd=0; wr=1; addr=16'b1111100001011000; bval=4'b1111; wdata=32'h70007000; @(negedge sys_clk) rd=0; wr=0; @(negedge ack) expect_write(64'h300020001000f83f); @(negedge sys_clk); // write miss, bank X
+    rst=0; rd=0; wr=1; addr=16'b1111100010011000; bval=4'b1111; wdata=32'h10001000; @(negedge sys_clk) rd=0; wr=0; @(negedge ack) expect_write(64'h300020001000f83f); @(negedge sys_clk); // write miss, bank X
+    rst=0; rd=0; wr=1; addr=16'b1111100100011000; bval=4'b1111; wdata=32'hf000f000; @(negedge sys_clk) rd=0; wr=0; @(negedge ack) expect_write(64'h300020001000f83f); @(negedge sys_clk); // write miss, bank X
+    rst=0; rd=0; wr=1; addr=16'b1111101000011000; bval=4'b1111; wdata=32'he000e000; @(negedge sys_clk) rd=0; wr=0; @(negedge ack) expect_write(64'h300020001000f83f); @(negedge sys_clk); // write miss, bank X
+    rst=0; rd=0; wr=1; addr=16'b1111110000011000; bval=4'b1111; wdata=32'ha000a000; @(negedge sys_clk) rd=0; wr=0; @(negedge ack) expect_write(64'h300020001000f83f); @(negedge sys_clk); // write miss, bank X
+    rst=0; rd=0; wr=1; addr=16'b1111100000111000; bval=4'b1111; wdata=32'h10001000; @(negedge sys_clk) rd=0; wr=0; @(negedge ack) expect_write(64'h300020001000f83f); @(negedge sys_clk); // write hit,  bank X
+    rst=0; rd=0; wr=1; addr=16'b1111100001011000; bval=4'b1111; wdata=32'hf000f000; @(negedge sys_clk) rd=0; wr=0; @(negedge ack) expect_write(64'h300020001000f83f); @(negedge sys_clk); // write hit,  bank X
+    rst=0; rd=0; wr=1; addr=16'b1111100000011000; bval=4'b1111; wdata=32'he000e000; @(negedge sys_clk) rd=0; wr=0; @(negedge ack) expect_write(64'h300020001000f83f); @(negedge sys_clk); // write hit,  bank X, get previously written instead of sudo-ram generated
 
     $display("TEST PASSED");
     $finish;
